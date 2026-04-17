@@ -1,10 +1,21 @@
+import psycopg2
 import os
-from supabase import create_client
 from dotenv import load_dotenv
 
 load_dotenv()
 
-supabase = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_KEY"))
+def get_connection():
+    return psycopg2.connect(os.getenv('DATABASE_URL'))
 
-if __name__ == "__main__":
-    print("Supabase client created successfully!")
+def query(sql, params=None):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(sql, params or ())
+    conn.commit()
+    try:
+        return cur.fetchall()
+    except:
+        return []
+    finally:
+        cur.close()
+        conn.close()

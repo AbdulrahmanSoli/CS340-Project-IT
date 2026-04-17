@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head><title>Login</title></head>
+<body>
+  <h2>IT Asset Management System</h2>
+  <form method='POST' action='/login'>
+    <input name='email' placeholder='Email' required><br>
+    <input name='password' type='password' placeholder='Password' required><br>
+    {% if error %}<p style='color:red'>{{ error }}</p>{% endif %}
+    <button type='submit'>Login</button>
+  </form>
+</body>
+</html>

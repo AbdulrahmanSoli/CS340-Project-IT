@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Welcome, {{ session['user_name'] }}</h2>
+
+<h3>Assets Overview</h3>
+<p>Total: {{ total }}</p>
+<p>Available: {{ available }}</p>
+<p>Assigned: {{ assigned }}</p>
+<p>Damaged: {{ damaged }}</p>
+
+<h3>Recent Assignments</h3>
+<table border='1'>
+  <tr><th>Asset</th><th>Employee</th><th>Date</th></tr>
+  {% for r in recent %}
+  <tr>
+    <td>{{ r[0] }}</td>
+    <td>{{ r[1] }}</td>
+    <td>{{ r[2] }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}
