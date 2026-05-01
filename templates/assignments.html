@@ -61,10 +61,40 @@
 {% if session['user_type'] == 'Admin' %}
 <h3>Assign an Asset</h3>
 <form method='POST' action='/assignments/add'>
-  <input name='asset_id' placeholder='Asset ID' required>
-  <input name='user_id' placeholder='Employee ID' required>
+  <select name='asset_id' required>
+    <option value=''>-- Select Asset --</option>
+    {% for a in available_assets %}
+    <option value='{{ a[0] }}'>{{ a[0] }} - {{ a[1] }} ({{ a[2] }})</option>
+    {% endfor %}
+  </select>
+  <select name='user_id' required>
+    <option value=''>-- Select Employee --</option>
+    {% for e in employees %}
+    <option value='{{ e[0] }}'>{{ e[0] }} - {{ e[1] }} ({{ e[2] }})</option>
+    {% endfor %}
+  </select>
   <button type='submit'>Assign</button>
 </form>
+
+<details style='margin-top:1em'>
+  <summary>Available assets ({{ available_assets|length }})</summary>
+  <table border='1'>
+    <tr><th>ID</th><th>Name</th><th>Category</th></tr>
+    {% for a in available_assets %}
+    <tr><td>{{ a[0] }}</td><td>{{ a[1] }}</td><td>{{ a[2] }}</td></tr>
+    {% endfor %}
+  </table>
+</details>
+
+<details>
+  <summary>Employees ({{ employees|length }})</summary>
+  <table border='1'>
+    <tr><th>ID</th><th>Name</th><th>Department</th></tr>
+    {% for e in employees %}
+    <tr><td>{{ e[0] }}</td><td>{{ e[1] }}</td><td>{{ e[2] }}</td></tr>
+    {% endfor %}
+  </table>
+</details>
 {% endif %}
 
 {% endblock %}
