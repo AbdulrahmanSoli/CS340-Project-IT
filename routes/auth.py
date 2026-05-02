@@ -1,4 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, session
+from werkzeug.security import check_password_hash
 from db import query
 
 auth_bp = Blueprint('auth', __name__)
@@ -9,12 +10,12 @@ def login():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
-        rows = query('SELECT * FROM users WHERE email = %s AND passwordHash = %s',
-                     (email, password))
-        if rows:
+        rows = query('SELECT userID, userFullName, passwordHash, userType '
+                     'FROM users WHERE email = %s', (email,))
+        if rows and check_password_hash(rows[0][2], password):
             session['user_id'] = rows[0][0]
-            session['user_type'] = rows[0][6]
             session['user_name'] = rows[0][1]
+            session['user_type'] = rows[0][3]
             return redirect('/dashboard')
         return render_template('login.html', error='Wrong email or password')
     return render_template('login.html')

@@ -1,5 +1,6 @@
 import psycopg2
 from flask import Blueprint, render_template, request, redirect, session
+from werkzeug.security import generate_password_hash
 from db import query, tx
 
 users_bp = Blueprint('users', __name__)
@@ -63,7 +64,7 @@ def add_user():
     statements = [
         ('''INSERT INTO users (userID, userFullName, email, department, passwordHash, userType)
             VALUES (%s, %s, %s, %s, %s, %s)''',
-         (user_id, name, email, dept, password, usertype)),
+         (user_id, name, email, dept, generate_password_hash(password), usertype)),
         (f'INSERT INTO {role_table} (userID) VALUES (%s)', (user_id,)),
     ]
     try:
@@ -91,7 +92,7 @@ def update_user():
 
     try:
         query('UPDATE users SET department = %s WHERE userID = %s',
-              (dept, user_id), raise_errors=True)
+              (dept, user_id))
     except Exception as e:
         return _render_with_error(f'Update failed: {e}')
 

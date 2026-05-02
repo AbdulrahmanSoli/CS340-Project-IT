@@ -5,6 +5,9 @@
   <nav>
     <a href='/dashboard'>Dashboard</a> |
     <a href='/assets'>Assets</a> |
+    {% if session['user_type'] == 'Employee' %}
+    <a href='/assets/my'>My Assets</a> |
+    {% endif %}
     <a href='/assignments'>Assignments</a> |
     <a href='/history'>History</a> |
     <a href='/users'>Users</a> |

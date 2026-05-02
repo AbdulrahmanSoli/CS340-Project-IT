@@ -28,15 +28,35 @@ def list_assets():
     rows = query('SELECT * FROM asset ORDER BY assetID') or []
     return _render(assets=rows)
 
-# 2. Filter by status
+# 2. Filter by status, category, and/or serial number
 @assets_bp.route('/assets/filter')
 def filter_assets():
     if login_required():
         return redirect('/login')
-    status = request.args.get('status', '')
-    if status not in ('Available', 'Assigned', 'Damaged'):
-        return _render_with_error('Invalid status filter.')
-    rows = query('SELECT * FROM asset WHERE status = %s ORDER BY assetID', (status,)) or []
+
+    status = request.args.get('status', '').strip()
+    category = request.args.get('category', '').strip()
+    serial = request.args.get('serial', '').strip()
+
+    clauses = []
+    params = []
+    if status:
+        if status not in ('Available', 'Assigned', 'Damaged'):
+            return _render_with_error('Invalid status filter.')
+        clauses.append('status = %s')
+        params.append(status)
+    if category:
+        clauses.append('category ILIKE %s')
+        params.append(f'%{category}%')
+    if serial:
+        clauses.append('serialNum ILIKE %s')
+        params.append(f'%{serial}%')
+
+    if not clauses:
+        return _render_with_error('Provide at least one of: status, category, serial.')
+
+    sql = 'SELECT * FROM asset WHERE ' + ' AND '.join(clauses) + ' ORDER BY assetID'
+    rows = query(sql, tuple(params)) or []
     return _render(assets=rows)
 
 # 3. Add a new asset (admin only)
@@ -62,7 +82,7 @@ def add_asset():
         query('''
             INSERT INTO asset (assetID, assetName, category, status, serialNum)
             VALUES (%s, %s, %s, %s, %s)
-        ''', (asset_id, name, category, status, serial), raise_errors=True)
+        ''', (asset_id, name, category, status, serial))
     except psycopg2.errors.UniqueViolation:
         return _render_with_error(f'Asset {asset_id} (or its serial) already exists.')
     except Exception as e:
@@ -127,7 +147,7 @@ def delete_asset(asset_id):
         return _render_with_error(f'Asset {asset_id} has an active assignment. Return it first.')
 
     try:
-        query('DELETE FROM asset WHERE assetID = %s', (asset_id,), raise_errors=True)
+        query('DELETE FROM asset WHERE assetID = %s', (asset_id,))
     except psycopg2.errors.ForeignKeyViolation:
         return _render_with_error(f'Asset {asset_id} is referenced elsewhere and cannot be deleted.')
     except Exception as e:
@@ -192,6 +212,20 @@ def frequent_assets():
     ''') or []
     return _render(frequent=rows)
 
+# Employee view: only assets currently assigned to the logged-in user
+@assets_bp.route('/assets/my')
+def my_assets():
+    if login_required():
+        return redirect('/login')
+    rows = query('''
+        SELECT a.*
+        FROM asset a
+        JOIN asset_assignment aa ON a.assetID = aa.assetID
+        WHERE aa.userID = %s AND aa.returnDate IS NULL
+        ORDER BY a.assetID
+    ''', (session['user_id'],)) or []
+    return _render(assets=rows)
+
 # 10. Assets purchased this year (requires purchaseDate column)
 @assets_bp.route('/assets/new-purchases')
 def recent_purchases():
@@ -201,7 +235,5 @@ def recent_purchases():
         SELECT * FROM asset
         WHERE EXTRACT(YEAR FROM purchaseDate) = EXTRACT(YEAR FROM CURRENT_DATE)
         ORDER BY assetID
-    ''')
-    if rows is None:
-        return _render_with_error('purchaseDate column not available in schema.')
+    ''') or []
     return _render(assets=rows)

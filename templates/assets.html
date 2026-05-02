@@ -19,6 +19,18 @@
   <a href='/assets/frequent-assignments'>Frequently Assigned</a>
 </p>
 
+<form method='GET' action='/assets/filter' style='margin:8px 0'>
+  <select name='status'>
+    <option value=''>Any status</option>
+    <option value='Available'>Available</option>
+    <option value='Assigned'>Assigned</option>
+    <option value='Damaged'>Damaged</option>
+  </select>
+  <input name='category' placeholder='Category contains'>
+  <input name='serial' placeholder='Serial contains'>
+  <button type='submit'>Search</button>
+</form>
+
 {% if assets %}
 <table border='1'>
   <tr>
