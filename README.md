@@ -477,24 +477,53 @@ Advanced queries:
 
 This work connects the whole application instead of owning one separate ten-query CRUD page. It includes Flask app setup, blueprint registration, `.env` loading, database helpers, CSRF protection, login/session handling, dashboard integration, tests, deployment setup, and final route compatibility.
 
-Supporting login and dashboard queries:
+Basic queries:
 
-1. Login account lookup.
+1. Login: find user by email and password.
 
    ```sql
-   SELECT userID, userFullName, passwordHash, userType
+   SELECT *
    FROM users
-   WHERE email = %s;
+   WHERE email = %s AND passwordHash = %s;
    ```
 
-2. Admin dashboard total assets.
+   The implemented app improves this by selecting the password hash by email, then checking it with `check_password_hash()` in Python.
+
+2. Count assets by status.
+
+   ```sql
+   SELECT status, COUNT(*) AS total
+   FROM asset
+   GROUP BY status;
+   ```
+
+3. Show total number of assets.
 
    ```sql
    SELECT COUNT(*) AS total
    FROM asset;
    ```
 
-3. Admin dashboard status summary.
+4. Show most recently assigned assets.
+
+   ```sql
+   SELECT *
+   FROM asset_assignment
+   ORDER BY assignedDate DESC
+   LIMIT 5;
+   ```
+
+5. Show all damaged assets.
+
+   ```sql
+   SELECT *
+   FROM asset
+   WHERE status = 'Damaged';
+   ```
+
+Advanced queries:
+
+1. Dashboard summary: assigned, available, and damaged assets.
 
    ```sql
    SELECT
@@ -504,7 +533,7 @@ Supporting login and dashboard queries:
    FROM asset;
    ```
 
-4. Admin dashboard recent active assignments.
+2. Show recent assignments with asset and employee name.
 
    ```sql
    SELECT a.assetName, u.userFullName, aa.assignedDate
@@ -516,23 +545,39 @@ Supporting login and dashboard queries:
    LIMIT 5;
    ```
 
-5. Employee dashboard active assignment count.
+3. Show which department has the most active assignments.
 
    ```sql
-   SELECT COUNT(*)
-   FROM asset_assignment
-   WHERE userID = %s AND returnDate IS NULL;
+   SELECT u.department, COUNT(*) AS total
+   FROM asset_assignment aa
+   JOIN users u ON aa.userID = u.userID
+   WHERE aa.returnDate IS NULL
+   GROUP BY u.department
+   ORDER BY total DESC;
    ```
 
-6. Employee dashboard recent assignment list.
+4. Show employees who currently have no asset.
 
    ```sql
-   SELECT a.assetName, aa.assignedDate
+   SELECT *
+   FROM users
+   WHERE userType = 'Employee'
+     AND userID NOT IN (
+       SELECT userID
+       FROM asset_assignment
+       WHERE returnDate IS NULL
+     );
+   ```
+
+5. Full overview of all active assignments with details.
+
+   ```sql
+   SELECT u.userFullName, u.department, a.assetName, a.category, aa.assignedDate
    FROM asset_assignment aa
+   JOIN users u ON aa.userID = u.userID
    JOIN asset a ON aa.assetID = a.assetID
-   WHERE aa.userID = %s
-   ORDER BY aa.assignedDate DESC, aa.assignmentID DESC
-   LIMIT 5;
+   WHERE aa.returnDate IS NULL
+   ORDER BY aa.assignedDate DESC;
    ```
 
 ## Project Structure
