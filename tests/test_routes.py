@@ -51,6 +51,13 @@ class RouteTests(unittest.TestCase):
             self.assertEqual(sess['user_name'], 'Admin User')
             self.assertEqual(sess['user_type'], 'Admin')
 
+    def test_database_url_rejects_placeholder_host(self):
+        from db import _database_url
+
+        with patch.dict(os.environ, {'DATABASE_URL': 'postgresql://user:password@host:5432/dbname'}):
+            with self.assertRaisesRegex(RuntimeError, 'placeholder host'):
+                _database_url()
+
     def test_admin_nav_hides_history_link(self):
         self.login_session(user_type='Admin')
 
