@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+{% block content %}
+
+<h2>Users</h2>
+
+{% if error %}<p style='color:red'>{{ error }}</p>{% endif %}
+
+<p>
+  <a href='/users'>All</a> |
+  <a href='/users/filter?type=Admin'>Admins</a> |
+  <a href='/users/filter?type=Employee'>Employees</a> |
+  <a href='/users/no-active-asset'>Employees w/o Active Asset</a>
+</p>
+<p>
+  <a href='/users/assets-count'>Assets per User</a> |
+  <a href='/users/department-count'>By Department</a> |
+  <a href='/users/most-assignments'>Top User</a> |
+  <a href='/users/type-count'>By Role</a>
+</p>
+
+{% if users %}
+<table border='1'>
+  <tr>
+    <th>ID</th><th>Name</th><th>Email</th>
+    <th>Department</th><th>Created</th><th>Type</th><th>Action</th>
+  </tr>
+  {% for u in users %}
+  <tr>
+    <td>{{ u[0] }}</td>
+    <td>{{ u[1] }}</td>
+    <td>{{ u[2] }}</td>
+    <td>{{ u[3] or '' }}</td>
+    <td>{{ u[5] }}</td>
+    <td>{{ u[6] }}</td>
+    <td>
+      {% if session['user_type'] == 'Admin' and u[0] != session['user_id'] %}
+      <form method='POST' action='/users/delete/{{ u[0] }}' style='display:inline'
+            onsubmit="return confirm('Delete user {{ u[0] }}?');">
+        <button type='submit'>Delete</button>
+      </form>
+      {% endif %}
+    </td>
+  </tr>
+  {% endfor %}
+</table>
+{% elif asset_counts is not defined and dept_counts is not defined and top_user is not defined and type_counts is not defined %}
+<p>No users found.</p>
+{% endif %}
+
+{% if asset_counts is defined %}
+<h3>Assets per User</h3>
+<table border='1'>
+  <tr><th>Name</th><th>Total Assignments</th></tr>
+  {% for r in asset_counts %}
+  <tr><td>{{ r[0] }}</td><td>{{ r[1] }}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+{% if dept_counts is defined %}
+<h3>Users by Department</h3>
+<table border='1'>
+  <tr><th>Department</th><th>Total</th></tr>
+  {% for r in dept_counts %}
+  <tr><td>{{ r[0] }}</td><td>{{ r[1] }}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+{% if top_user is defined %}
+<h3>User with Most Assignments</h3>
+<table border='1'>
+  <tr><th>User ID</th><th>Name</th><th>Total</th></tr>
+  {% for r in top_user %}
+  <tr><td>{{ r[0] }}</td><td>{{ r[1] }}</td><td>{{ r[2] }}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+{% if type_counts is defined %}
+<h3>Users by Role</h3>
+<table border='1'>
+  <tr><th>Role</th><th>Total</th></tr>
+  {% for r in type_counts %}
+  <tr><td>{{ r[0] }}</td><td>{{ r[1] }}</td></tr>
+  {% endfor %}
+</table>
+{% endif %}
+
+{% if session['user_type'] == 'Admin' %}
+<h3>Add New User</h3>
+<form method='POST' action='/users/add'>
+  <input name='user_id' placeholder='User ID' type='number' required>
+  <input name='name' placeholder='Full name' required>
+  <input name='email' placeholder='Email' type='email' required>
+  <input name='dept' placeholder='Department'>
+  <input name='password' placeholder='Password' type='password' required>
+  <select name='type'>
+    <option value='Employee'>Employee</option>
+    <option value='Admin'>Admin</option>
+  </select>
+  <button type='submit'>Add User</button>
+</form>
+
+<h3>Update Department</h3>
+<form method='POST' action='/users/update'>
+  <input name='user_id' placeholder='User ID' type='number' required>
+  <input name='dept' placeholder='New department'>
+  <button type='submit'>Update</button>
+</form>
+{% endif %}
+
+{% endblock %}
