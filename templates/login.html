@@ -4,6 +4,7 @@
 <body>
   <h2>IT Asset Management System</h2>
   <form method='POST' action='/login'>
+    <input type='hidden' name='csrf_token' value='{{ csrf_token() }}'>
     <input name='email' placeholder='Email' required><br>
     <input name='password' type='password' placeholder='Password' required><br>
     {% if error %}<p style='color:red'>{{ error }}</p>{% endif %}

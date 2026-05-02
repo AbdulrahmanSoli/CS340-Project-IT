@@ -1,8 +1,17 @@
 import psycopg2
-from flask import Blueprint, render_template, request, redirect, session
+from flask import Blueprint, flash, render_template, request, redirect, session
 from db import query, tx
 
 assignments_bp = Blueprint('assignments', __name__)
+
+ASSIGNMENT_SELECT = '''
+    SELECT aa.assignmentID, aa.assignedDate, aa.returnDate,
+           aa.assetID, aa.userID, aa.assignedBy,
+           a.assetName, u.userFullName
+    FROM asset_assignment aa
+    JOIN asset a ON aa.assetID = a.assetID
+    JOIN users u ON aa.userID = u.userID
+'''
 
 def admin_required():
     return 'user_id' not in session or session.get('user_type') != 'Admin'
@@ -26,24 +35,31 @@ def _form_options():
     ''') or []
     return {'available_assets': available_assets, 'employees': employees}
 
+def _assignment_rows(where_sql='', params=(), order_sql='aa.assignedDate DESC, aa.assignmentID DESC'):
+    sql = ASSIGNMENT_SELECT
+    if where_sql:
+        sql += f'\nWHERE {where_sql}'
+    sql += f'\nORDER BY {order_sql}'
+    return query(sql, params) or []
+
 def _render_with_error(msg):
-    rows = query('SELECT * FROM asset_assignment WHERE returnDate IS NULL')
+    rows = _assignment_rows('aa.returnDate IS NULL')
     return render_template('assignments.html', assignments=rows, error=msg, **_form_options())
 
 # Query 1 - show all active assignments
 @assignments_bp.route('/assignments')
 def list_assignments():
-    if 'user_id' not in session:
+    if admin_required():
         return redirect('/login')
-    rows = query('SELECT * FROM asset_assignment WHERE returnDate IS NULL')
+    rows = _assignment_rows('aa.returnDate IS NULL')
     return render_template('assignments.html', assignments=rows, **_form_options())
 
 # Query 2 - show returned assignments
 @assignments_bp.route('/assignments/returned')
 def returned_assignments():
-    if 'user_id' not in session:
+    if admin_required():
         return redirect('/login')
-    rows = query('SELECT * FROM asset_assignment WHERE returnDate IS NOT NULL')
+    rows = _assignment_rows('aa.returnDate IS NOT NULL', order_sql='aa.returnDate DESC, aa.assignmentID DESC')
     return render_template('assignments.html', assignments=rows, **_form_options())
 
 # Query 3 - assign an asset (admin only)
@@ -61,8 +77,8 @@ def assign_asset():
     if not asset_rows:
         return _render_with_error(f'Asset {asset_id} does not exist.')
     current_status = asset_rows[0][0]
-    if current_status == 'Damaged':
-        return _render_with_error(f'Asset {asset_id} is marked Damaged and cannot be assigned.')
+    if current_status != 'Available':
+        return _render_with_error(f'Asset {asset_id} is not available for assignment.')
 
     if not query('SELECT 1 FROM employee WHERE userID = %s', (user_id,)):
         return _render_with_error(f'Employee {user_id} does not exist.')
@@ -89,6 +105,7 @@ def assign_asset():
     except Exception as e:
         return _render_with_error(f'Database error: {e}')
 
+    flash(f'Asset {asset_id} assigned successfully.')
     return redirect('/assignments')
 
 # Query 4 - mark returned (admin only)
@@ -125,6 +142,7 @@ def return_asset(assignment_id):
     except Exception as e:
         return _render_with_error(f'Return failed: {e}')
 
+    flash(f'Assignment {assignment_id} marked returned.')
     return redirect('/assignments')
 
 # Query 5 - employee's own assignments
@@ -134,37 +152,30 @@ def employee_assignments(user_id):
         return redirect('/login')
     if session.get('user_type') != 'Admin' and session.get('user_id') != user_id:
         return redirect('/dashboard')
-    rows = query('SELECT * FROM asset_assignment WHERE userID = %s', (user_id,))
+    rows = _assignment_rows('aa.userID = %s', (user_id,))
     return render_template('assignments.html', assignments=rows, **_form_options())
 
 # Query 6 - active assignments with asset + employee names (fixed: returns same shape as SELECT *)
 @assignments_bp.route('/assignments/details')
 def assignment_details():
-    if 'user_id' not in session:
+    if admin_required():
         return redirect('/login')
-    rows = query('''
-        SELECT aa.assignmentID, aa.assignedDate, aa.returnDate,
-               aa.assetID, aa.userID, aa.assignedBy
-        FROM asset_assignment aa
-        JOIN asset a ON aa.assetID = a.assetID
-        JOIN users u ON aa.userID = u.userID
-        WHERE aa.returnDate IS NULL
-    ''')
+    rows = _assignment_rows('aa.returnDate IS NULL')
     return render_template('assignments.html', assignments=rows, **_form_options())
 
 # Query 7 - average days an asset was kept
 @assignments_bp.route('/assignments/avg-days')
 def avg_days():
-    if 'user_id' not in session:
+    if admin_required():
         return redirect('/login')
     rows = query('SELECT ROUND(AVG(returnDate - assignedDate), 1) FROM asset_assignment WHERE returnDate IS NOT NULL')
-    avg = rows[0][0] if rows else 0
+    avg = rows[0][0] if rows and rows[0][0] is not None else 0
     return render_template('assignments.html', assignments=[], avg_days=avg, **_form_options())
 
 # Query 8 - most assigned user
 @assignments_bp.route('/assignments/top-users')
 def top_users():
-    if 'user_id' not in session:
+    if admin_required():
         return redirect('/login')
     rows = query('SELECT userID, COUNT(*) AS total FROM asset_assignment GROUP BY userID ORDER BY total DESC')
     return render_template('assignments.html', assignments=[], top_users=rows, **_form_options())
@@ -172,15 +183,16 @@ def top_users():
 # Query 9 - returned within 7 days
 @assignments_bp.route('/assignments/quick-returns')
 def quick_returns():
-    if 'user_id' not in session:
+    if admin_required():
         return redirect('/login')
-    rows = query('SELECT * FROM asset_assignment WHERE returnDate IS NOT NULL AND (returnDate - assignedDate) <= 7')
+    rows = _assignment_rows('aa.returnDate IS NOT NULL AND (aa.returnDate - aa.assignedDate) <= 7',
+                            order_sql='aa.returnDate DESC, aa.assignmentID DESC')
     return render_template('assignments.html', assignments=rows, **_form_options())
 
 # Query 10 - assets assigned more than once
 @assignments_bp.route('/assignments/repeated-assets')
 def repeated_assets():
-    if 'user_id' not in session:
+    if admin_required():
         return redirect('/login')
     rows = query('SELECT assetID, COUNT(*) AS total FROM asset_assignment GROUP BY assetID HAVING COUNT(*) > 1 ORDER BY total DESC')
     return render_template('assignments.html', assignments=[], repeated=rows, **_form_options())

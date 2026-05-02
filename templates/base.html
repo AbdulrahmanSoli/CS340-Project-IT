@@ -4,15 +4,23 @@
 <body>
   <nav>
     <a href='/dashboard'>Dashboard</a> |
+    {% if session['user_type'] == 'Admin' %}
     <a href='/assets'>Assets</a> |
-    {% if session['user_type'] == 'Employee' %}
-    <a href='/assets/my'>My Assets</a> |
-    {% endif %}
     <a href='/assignments'>Assignments</a> |
-    <a href='/history'>History</a> |
     <a href='/users'>Users</a> |
+    {% elif session['user_type'] == 'Employee' %}
+    <a href='/assets/my'>My Assets</a> |
+    <a href='/assignments/employee/{{ session["user_id"] }}'>My Assignments</a> |
+    {% endif %}
     <a href='/logout'>Logout</a>
   </nav>
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      {% for message in messages %}
+        <p style='color:green'>{{ message }}</p>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
   {% block content %}{% endblock %}
 </body>
 </html>

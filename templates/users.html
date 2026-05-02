@@ -33,9 +33,15 @@
     <td>{{ u[5] }}</td>
     <td>{{ u[6] }}</td>
     <td>
+      {% if u[6] == 'Employee' %}
+      <a href='/assignments/employee/{{ u[0] }}'>Assignments</a>
+      {% else %}
+      -
+      {% endif %}
       {% if session['user_type'] == 'Admin' and u[0] != session['user_id'] %}
       <form method='POST' action='/users/delete/{{ u[0] }}' style='display:inline'
             onsubmit="return confirm('Delete user {{ u[0] }}?');">
+        <input type='hidden' name='csrf_token' value='{{ csrf_token() }}'>
         <button type='submit'>Delete</button>
       </form>
       {% endif %}
@@ -90,6 +96,7 @@
 {% if session['user_type'] == 'Admin' %}
 <h3>Add New User</h3>
 <form method='POST' action='/users/add'>
+  <input type='hidden' name='csrf_token' value='{{ csrf_token() }}'>
   <input name='user_id' placeholder='User ID' type='number' required>
   <input name='name' placeholder='Full name' required>
   <input name='email' placeholder='Email' type='email' required>
@@ -104,7 +111,17 @@
 
 <h3>Update Department</h3>
 <form method='POST' action='/users/update'>
+  <input type='hidden' name='csrf_token' value='{{ csrf_token() }}'>
+  {% if users %}
+  <select name='user_id' required>
+    <option value=''>-- Select User --</option>
+    {% for u in users %}
+    <option value='{{ u[0] }}'>{{ u[0] }} - {{ u[1] }} ({{ u[3] or 'No department' }})</option>
+    {% endfor %}
+  </select>
+  {% else %}
   <input name='user_id' placeholder='User ID' type='number' required>
+  {% endif %}
   <input name='dept' placeholder='New department'>
   <button type='submit'>Update</button>
 </form>

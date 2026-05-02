@@ -22,12 +22,12 @@
 <form method='GET' action='/assets/filter' style='margin:8px 0'>
   <select name='status'>
     <option value=''>Any status</option>
-    <option value='Available'>Available</option>
-    <option value='Assigned'>Assigned</option>
-    <option value='Damaged'>Damaged</option>
+    <option value='Available' {% if filters is defined and filters.status == 'Available' %}selected{% endif %}>Available</option>
+    <option value='Assigned' {% if filters is defined and filters.status == 'Assigned' %}selected{% endif %}>Assigned</option>
+    <option value='Damaged' {% if filters is defined and filters.status == 'Damaged' %}selected{% endif %}>Damaged</option>
   </select>
-  <input name='category' placeholder='Category contains'>
-  <input name='serial' placeholder='Serial contains'>
+  <input name='category' placeholder='Category contains' value='{{ filters.category if filters is defined else "" }}'>
+  <input name='serial' placeholder='Serial contains' value='{{ filters.serial if filters is defined else "" }}'>
   <button type='submit'>Search</button>
 </form>
 
@@ -46,10 +46,30 @@
     <td>{{ a[4] }}</td>
     <td>
       {% if session['user_type'] == 'Admin' %}
-      <form method='POST' action='/assets/delete/{{ a[0] }}' style='display:inline'
-            onsubmit="return confirm('Delete asset {{ a[0] }}?');">
-        <button type='submit'>Delete</button>
-      </form>
+        {% if a[3] == 'Available' %}
+        <form method='POST' action='/assets/update' style='display:inline'>
+          <input type='hidden' name='csrf_token' value='{{ csrf_token() }}'>
+          <input type='hidden' name='asset_id' value='{{ a[0] }}'>
+          <input type='hidden' name='status' value='Damaged'>
+          <button type='submit'>Mark Damaged</button>
+        </form>
+        {% elif a[3] == 'Damaged' %}
+        <form method='POST' action='/assets/update' style='display:inline'>
+          <input type='hidden' name='csrf_token' value='{{ csrf_token() }}'>
+          <input type='hidden' name='asset_id' value='{{ a[0] }}'>
+          <input type='hidden' name='status' value='Available'>
+          <button type='submit'>Mark Available</button>
+        </form>
+        {% endif %}
+        {% if a[3] != 'Assigned' %}
+        <form method='POST' action='/assets/delete/{{ a[0] }}' style='display:inline'
+              onsubmit="return confirm('Delete asset {{ a[0] }}?');">
+          <input type='hidden' name='csrf_token' value='{{ csrf_token() }}'>
+          <button type='submit'>Delete</button>
+        </form>
+        {% else %}
+        Assigned
+        {% endif %}
       {% endif %}
     </td>
   </tr>
@@ -92,6 +112,7 @@
 {% if session['user_type'] == 'Admin' %}
 <h3>Add New Asset</h3>
 <form method='POST' action='/assets/add'>
+  <input type='hidden' name='csrf_token' value='{{ csrf_token() }}'>
   <input name='asset_id' placeholder='Asset ID' type='number' required>
   <input name='name' placeholder='Asset name' required>
   <input name='category' placeholder='Category' required>
@@ -103,16 +124,6 @@
   <button type='submit'>Add Asset</button>
 </form>
 
-<h3>Update Asset Status</h3>
-<p style='font-size:small'>Use the Assignments page to assign or return. This form only toggles between Available and Damaged.</p>
-<form method='POST' action='/assets/update'>
-  <input name='asset_id' placeholder='Asset ID' type='number' required>
-  <select name='status'>
-    <option value='Available'>Available</option>
-    <option value='Damaged'>Damaged</option>
-  </select>
-  <button type='submit'>Update Status</button>
-</form>
 {% endif %}
 
 {% endblock %}

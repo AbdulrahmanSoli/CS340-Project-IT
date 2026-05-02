@@ -10,19 +10,20 @@
 {% if assignments %}
 <table border='1'>
   <tr>
-    <th>Assignment ID</th><th>Asset ID</th><th>Employee ID</th>
+    <th>Assignment ID</th><th>Asset</th><th>Employee</th>
     <th>Date Assigned</th><th>Return Date</th><th>Action</th>
   </tr>
   {% for a in assignments %}
   <tr>
     <td>{{ a[0] }}</td>
-    <td>{{ a[3] }}</td>
-    <td>{{ a[4] }}</td>
+    <td>{% if a|length > 6 %}{{ a[6] }} (#{{ a[3] }}){% else %}{{ a[3] }}{% endif %}</td>
+    <td>{% if a|length > 7 %}{{ a[7] }} (#{{ a[4] }}){% else %}{{ a[4] }}{% endif %}</td>
     <td>{{ a[1] }}</td>
     <td>{{ a[2] or 'Active' }}</td>
     <td>
       {% if a[2] is none and session['user_type'] == 'Admin' %}
       <form method='POST' action='/assignments/return/{{ a[0] }}' style='display:inline'>
+        <input type='hidden' name='csrf_token' value='{{ csrf_token() }}'>
         <button type='submit'>Mark Returned</button>
       </form>
       {% endif %}
@@ -30,7 +31,7 @@
   </tr>
   {% endfor %}
 </table>
-{% else %}
+{% elif avg_days is not defined and top_users is not defined and repeated is not defined %}
 <p>No assignments found.</p>
 {% endif %}
 
@@ -61,6 +62,7 @@
 {% if session['user_type'] == 'Admin' %}
 <h3>Assign an Asset</h3>
 <form method='POST' action='/assignments/add'>
+  <input type='hidden' name='csrf_token' value='{{ csrf_token() }}'>
   <select name='asset_id' required>
     <option value=''>-- Select Asset --</option>
     {% for a in available_assets %}

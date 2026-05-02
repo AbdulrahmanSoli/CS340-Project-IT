@@ -1,5 +1,5 @@
 import psycopg2
-from flask import Blueprint, render_template, request, redirect, session
+from flask import Blueprint, flash, render_template, request, redirect, session
 from werkzeug.security import generate_password_hash
 from db import query, tx
 
@@ -17,27 +17,27 @@ def _render(users=None, **extra):
     return render_template('users.html', users=users or [], **extra)
 
 def _render_with_error(msg):
-    rows = query('SELECT * FROM users ORDER BY userID') or []
+    rows = query('SELECT * FROM users ORDER BY userType, userFullName, userID') or []
     return render_template('users.html', users=rows, error=msg)
 
 
 # Query 1 - show all users
 @users_bp.route('/users')
 def list_users():
-    if login_required():
+    if admin_required():
         return redirect('/login')
-    rows = query('SELECT * FROM users ORDER BY userID') or []
+    rows = query('SELECT * FROM users ORDER BY userType, userFullName, userID') or []
     return _render(users=rows)
 
 # Query 2 - filter by role
 @users_bp.route('/users/filter')
 def filter_users():
-    if login_required():
+    if admin_required():
         return redirect('/login')
     usertype = request.args.get('type', '')
     if usertype not in VALID_TYPES:
         return _render_with_error('Invalid user type filter.')
-    rows = query('SELECT * FROM users WHERE userType = %s ORDER BY userID', (usertype,)) or []
+    rows = query('SELECT * FROM users WHERE userType = %s ORDER BY userFullName, userID', (usertype,)) or []
     return _render(users=rows)
 
 # Query 3 - add a new user (admin only)
@@ -74,6 +74,7 @@ def add_user():
     except Exception as e:
         return _render_with_error(f'Database error: {e}')
 
+    flash(f'User {name} added successfully.')
     return redirect('/users')
 
 # Query 4 - update department (admin only)
@@ -96,6 +97,7 @@ def update_user():
     except Exception as e:
         return _render_with_error(f'Update failed: {e}')
 
+    flash(f'User {user_id} department updated.')
     return redirect('/users')
 
 # Query 5 - delete a user (admin only, POST)
@@ -130,12 +132,13 @@ def delete_user(user_id):
     except Exception as e:
         return _render_with_error(f'Delete failed: {e}')
 
+    flash(f'User {user_id} deleted.')
     return redirect('/users')
 
 # Query 6 - each user + how many assets they have
 @users_bp.route('/users/assets-count')
 def users_assets_count():
-    if login_required():
+    if admin_required():
         return redirect('/login')
     rows = query('''
         SELECT u.userFullName, COUNT(aa.assignmentID) AS total
@@ -149,7 +152,7 @@ def users_assets_count():
 # Query 7 - employees with no active asset
 @users_bp.route('/users/no-active-asset')
 def no_active_asset():
-    if login_required():
+    if admin_required():
         return redirect('/login')
     rows = query('''
         SELECT * FROM users
@@ -164,7 +167,7 @@ def no_active_asset():
 # Query 8 - count users per department
 @users_bp.route('/users/department-count')
 def department_count():
-    if login_required():
+    if admin_required():
         return redirect('/login')
     rows = query('''
         SELECT COALESCE(department, '(none)') AS department, COUNT(*) AS total
@@ -177,7 +180,7 @@ def department_count():
 # Query 9 - who has the most assignments ever
 @users_bp.route('/users/most-assignments')
 def most_assignments():
-    if login_required():
+    if admin_required():
         return redirect('/login')
     rows = query('''
         SELECT u.userID, u.userFullName, COUNT(*) AS total
@@ -192,7 +195,7 @@ def most_assignments():
 # Query 10 - count admins vs employees
 @users_bp.route('/users/type-count')
 def type_count():
-    if login_required():
+    if admin_required():
         return redirect('/login')
     rows = query('''
         SELECT userType, COUNT(*) AS total

@@ -1,5 +1,5 @@
 import psycopg2
-from flask import Blueprint, render_template, request, redirect, session
+from flask import Blueprint, flash, render_template, request, redirect, session
 from db import query, tx
 
 assets_bp = Blueprint('assets', __name__)
@@ -14,7 +14,7 @@ def _render(assets=None, **extra):
     return render_template('assets.html', assets=assets or [], **extra)
 
 def _render_with_error(msg):
-    rows = query('SELECT * FROM asset ORDER BY assetID') or []
+    rows = query('SELECT * FROM asset ORDER BY status, assetName, assetID') or []
     return render_template('assets.html', assets=rows, error=msg)
 
 
@@ -23,15 +23,15 @@ def _render_with_error(msg):
 # 1. Show all assets
 @assets_bp.route('/assets')
 def list_assets():
-    if login_required():
+    if admin_required():
         return redirect('/login')
-    rows = query('SELECT * FROM asset ORDER BY assetID') or []
+    rows = query('SELECT * FROM asset ORDER BY status, assetName, assetID') or []
     return _render(assets=rows)
 
 # 2. Filter by status, category, and/or serial number
 @assets_bp.route('/assets/filter')
 def filter_assets():
-    if login_required():
+    if admin_required():
         return redirect('/login')
 
     status = request.args.get('status', '').strip()
@@ -57,7 +57,11 @@ def filter_assets():
 
     sql = 'SELECT * FROM asset WHERE ' + ' AND '.join(clauses) + ' ORDER BY assetID'
     rows = query(sql, tuple(params)) or []
-    return _render(assets=rows)
+    return _render(assets=rows, filters={
+        'status': status,
+        'category': category,
+        'serial': serial,
+    })
 
 # 3. Add a new asset (admin only)
 @assets_bp.route('/assets/add', methods=['POST'])
@@ -88,6 +92,7 @@ def add_asset():
     except Exception as e:
         return _render_with_error(f'Database error: {e}')
 
+    flash('Asset added successfully.')
     return redirect('/assets')
 
 # 4. Update an asset's status (admin only)
@@ -128,6 +133,7 @@ def update_asset():
     except Exception as e:
         return _render_with_error(f'Update failed: {e}')
 
+    flash(f'Asset {asset_id} marked {new_status}.')
     return redirect('/assets')
 
 # 5. Delete an asset (admin only, POST)
@@ -153,6 +159,7 @@ def delete_asset(asset_id):
     except Exception as e:
         return _render_with_error(f'Delete failed: {e}')
 
+    flash(f'Asset {asset_id} deleted.')
     return redirect('/assets')
 
 
@@ -161,7 +168,7 @@ def delete_asset(asset_id):
 # 6. Show each asset with who currently has it
 @assets_bp.route('/assets/assignments')
 def current_assignments():
-    if login_required():
+    if admin_required():
         return redirect('/login')
     rows = query('''
         SELECT a.assetName, u.userFullName
@@ -176,7 +183,7 @@ def current_assignments():
 # 7. Assets that have never been assigned
 @assets_bp.route('/assets/unassigned')
 def unassigned_assets():
-    if login_required():
+    if admin_required():
         return redirect('/login')
     rows = query('''
         SELECT * FROM asset
@@ -188,7 +195,7 @@ def unassigned_assets():
 # 8. Count assets by category
 @assets_bp.route('/assets/count-by-category')
 def count_categories():
-    if login_required():
+    if admin_required():
         return redirect('/login')
     rows = query('''
         SELECT category, COUNT(*) AS total
@@ -201,7 +208,7 @@ def count_categories():
 # 9. Assets assigned more than once
 @assets_bp.route('/assets/frequent-assignments')
 def frequent_assets():
-    if login_required():
+    if admin_required():
         return redirect('/login')
     rows = query('''
         SELECT assetID, COUNT(*) AS total
@@ -229,7 +236,7 @@ def my_assets():
 # 10. Assets purchased this year (requires purchaseDate column)
 @assets_bp.route('/assets/new-purchases')
 def recent_purchases():
-    if login_required():
+    if admin_required():
         return redirect('/login')
     rows = query('''
         SELECT * FROM asset
