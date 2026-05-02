@@ -58,7 +58,7 @@ class RouteTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, 'placeholder host'):
                 _database_url()
 
-    def test_admin_nav_hides_history_link(self):
+    def test_admin_nav_shows_history_link(self):
         self.login_session(user_type='Admin')
 
         with patch('routes.assets.query', return_value=[]):
@@ -67,7 +67,7 @@ class RouteTests(unittest.TestCase):
         body = response.get_data(as_text=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn('/users', body)
-        self.assertNotIn('/history', body)
+        self.assertIn('/history', body)
 
     def test_employee_cannot_open_admin_users_page(self):
         self.login_session(user_id=3, user_type='Employee')
@@ -103,6 +103,15 @@ class RouteTests(unittest.TestCase):
             '/assignments/top-users',
             '/assignments/quick-returns',
             '/assignments/repeated-assets',
+            '/history',
+            '/history/asset?asset_id=10',
+            '/history/asset/10',
+            '/history/filter?status=Available',
+            '/history/with-assets',
+            '/history/count-by-asset',
+            '/history/damaged',
+            '/history/latest',
+            '/history/frequent',
             '/users',
             '/users/filter?type=Admin',
             '/users/filter?type=Employee',
@@ -118,6 +127,33 @@ class RouteTests(unittest.TestCase):
                 response = self.client.get(route)
                 self.assertEqual(response.status_code, 302)
                 self.assertEqual(response.headers['Location'], '/dashboard')
+
+    def test_logged_out_history_redirects_to_login(self):
+        response = self.client.get('/history')
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers['Location'], '/login')
+
+    def test_employee_history_post_routes_redirect_to_dashboard(self):
+        self.login_session(user_id=3, user_type='Employee')
+
+        add_response = self.client.post('/history/add', data={
+            'csrf_token': 'csrf-test-token',
+            'history_id': '20',
+            'asset_id': '10',
+            'prev_status': 'Available',
+            'new_status': 'Damaged',
+        })
+        dates_response = self.client.post('/history/dates', data={
+            'csrf_token': 'csrf-test-token',
+            'from_date': '2026-05-01',
+            'to_date': '2026-05-02',
+        })
+
+        self.assertEqual(add_response.status_code, 302)
+        self.assertEqual(add_response.headers['Location'], '/dashboard')
+        self.assertEqual(dates_response.status_code, 302)
+        self.assertEqual(dates_response.headers['Location'], '/dashboard')
 
     def test_employee_can_open_own_assignments_page(self):
         self.login_session(user_id=3, user_type='Employee')
@@ -214,6 +250,80 @@ class RouteTests(unittest.TestCase):
         self.assertIn("value='Laptop'", body)
         self.assertIn("value='ABC'", body)
         self.assertIn("value='Damaged' selected", body)
+
+    def test_history_list_renders_rows_for_admin(self):
+        self.login_session(user_type='Admin')
+
+        rows = [(5, 'Available', 'Damaged', '2026-05-01', 10, 1)]
+        with patch('routes.history.query', return_value=rows):
+            response = self.client.get('/history')
+
+        body = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Asset Status History', body)
+        self.assertIn('<td>10</td>', body)
+        self.assertIn('<td>Available</td>', body)
+        self.assertIn('<td>Damaged</td>', body)
+
+    def test_history_filter_validates_status(self):
+        self.login_session(user_type='Admin')
+
+        with patch('routes.history.query', return_value=[]):
+            response = self.client.get('/history/filter?status=Broken')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Invalid status filter.', response.get_data(as_text=True))
+
+    def test_history_asset_lookup_redirects_to_asset_route(self):
+        self.login_session(user_type='Admin')
+
+        response = self.client.get('/history/asset?asset_id=10')
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers['Location'], '/history/asset/10')
+
+    def test_history_date_filter_validates_order(self):
+        self.login_session(user_type='Admin')
+
+        with patch('routes.history.query', return_value=[]):
+            response = self.client.post('/history/dates', data={
+                'csrf_token': 'csrf-test-token',
+                'from_date': '2026-05-02',
+                'to_date': '2026-05-01',
+            })
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('From date must be before or equal to to date.', response.get_data(as_text=True))
+
+    def test_history_add_inserts_status_change(self):
+        self.login_session(user_id=1, user_type='Admin')
+
+        with patch('routes.history.query', return_value=[] ) as mock_query:
+            response = self.client.post('/history/add', data={
+                'csrf_token': 'csrf-test-token',
+                'history_id': '20',
+                'asset_id': '10',
+                'prev_status': 'Available',
+                'new_status': 'Damaged',
+            })
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers['Location'], '/history')
+        sql, params = mock_query.call_args[0]
+        self.assertIn('INSERT INTO asset_status_history', sql)
+        self.assertEqual(params, ('20', 'Available', 'Damaged', '10', 1))
+
+    def test_history_advanced_named_rows_render(self):
+        self.login_session(user_type='Admin')
+
+        rows = [('Dell Laptop', 'Available', 'Assigned', '2026-05-01')]
+        with patch('routes.history.query', return_value=rows):
+            response = self.client.get('/history/with-assets')
+
+        body = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('History with Asset Names', body)
+        self.assertIn('Dell Laptop', body)
 
     def test_dashboard_renders_counts_and_recent_assignments(self):
         self.login_session(user_type='Admin', user_name='Admin User')

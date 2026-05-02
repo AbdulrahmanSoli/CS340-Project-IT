@@ -7,7 +7,7 @@ from routes.auth import auth_bp
 from routes.assignments import assignments_bp
 from routes.assets import assets_bp
 from routes.users import users_bp
-# from routes.history import history_bp     # add when Albekairi sends his file
+from routes.history import history_bp
 
 load_dotenv()
 
@@ -40,7 +40,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(assignments_bp)
 app.register_blueprint(assets_bp)
 app.register_blueprint(users_bp)
-# app.register_blueprint(history_bp)
+app.register_blueprint(history_bp)
 
 if __name__ == '__main__':
     app.run(debug=os.getenv('FLASK_DEBUG', '0') == '1')

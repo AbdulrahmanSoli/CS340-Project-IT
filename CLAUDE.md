@@ -32,7 +32,7 @@ pip install -r requirements.txt
 
 ### Entry Point
 
-[app.py](app.py) - Creates the Flask app, loads `SECRET_KEY` from env, and registers four blueprints: `auth_bp`, `assignments_bp`, `assets_bp`, `users_bp`. `history_bp` is commented out pending implementation.
+[app.py](app.py) - Creates the Flask app, loads `SECRET_KEY` from env, and registers five blueprints: `auth_bp`, `assignments_bp`, `assets_bp`, `users_bp`, and `history_bp`.
 
 ### Database Layer
 
@@ -52,7 +52,7 @@ All routes use raw SQL via these helpers - no ORM.
 | [routes/assets.py](routes/assets.py) | `/assets` | Hassan | Asset CRUD, filters (`status`/`category`/`serial`), employee `/assets/my`, analytics |
 | [routes/assignments.py](routes/assignments.py) | `/assignments` | Almuaigel | Assignment workflow + analytics |
 | [routes/users.py](routes/users.py) | `/users` | Alrasheed | User CRUD + analytics |
-| [routes/history.py](routes/history.py) | `/history` | Albekairi | **Owned by teammate - placeholder.** Don't implement here; `history_bp` is commented out in [app.py](app.py) until the file lands. |
+| [routes/history.py](routes/history.py) | `/history` | Albekairi | Status history page, filters, manual history insert, and analytics queries |
 
 ### Auth Pattern
 
@@ -98,7 +98,7 @@ Valid user types: `Admin`, `Employee`
 
 Jinja2 templates in [templates/](templates/) extend [templates/base.html](templates/base.html). Nav links: Dashboard, Assets, My Assets (Employee only), Assignments, History, Users, Logout. Templates currently use positional row indexing (`{{ a[0] }}`, `{{ u[1] }}` …) - psycopg2 default cursor returns tuples. If switching to `RealDictCursor` later, every template needs updating too.
 
-[templates/history.html](templates/history.html) is an empty placeholder until Albekairi delivers `routes/history.py`.
+[templates/history.html](templates/history.html) renders the status-history table, status/date filters, manual log form, and advanced status-history query outputs.
 
 ## Migrations and Scripts
 

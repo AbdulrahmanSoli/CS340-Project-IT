@@ -38,9 +38,502 @@ All ten seeded users follow the pattern `hash_<userID>`.
 - Assignment workflow: assign available assets, mark assets returned, and prevent double-assignment with a partial unique index.
 - Assignment tables show asset and employee names with IDs.
 - Status history is written inside transactions when asset status changes.
+- Status history page: view history, filter by status/date, log new history rows, and run status-history analytics.
 - Admin user management: add users, update departments, delete safe users, and review analytics.
 - Employee views: `/assets/my` and `/assignments/employee/<user_id>`.
 - Success messages after create, update, delete, assign, and return actions.
+
+## Team Query Ownership
+
+`%s` marks values passed safely through parameterized `psycopg2` queries. Some write actions also run validation queries before the final insert, update, or delete.
+
+### Abdullah Albekairi: Asset Status History Page
+
+Basic queries:
+
+1. Show all status history.
+
+   ```sql
+   SELECT *
+   FROM asset_status_history
+   ORDER BY changeDate DESC, historyID DESC;
+   ```
+
+2. Show history for one asset.
+
+   ```sql
+   SELECT *
+   FROM asset_status_history
+   WHERE assetID = %s
+   ORDER BY changeDate DESC, historyID DESC;
+   ```
+
+3. Log a new status change.
+
+   ```sql
+   INSERT INTO asset_status_history
+       (historyID, previousStatus, newStatus, changeDate, assetID, changedBy)
+   VALUES (%s, %s, %s, CURRENT_DATE, %s, %s);
+   ```
+
+4. Filter history by new status.
+
+   ```sql
+   SELECT *
+   FROM asset_status_history
+   WHERE newStatus = %s
+   ORDER BY changeDate DESC, historyID DESC;
+   ```
+
+5. Filter history by date range.
+
+   ```sql
+   SELECT *
+   FROM asset_status_history
+   WHERE changeDate BETWEEN %s AND %s
+   ORDER BY changeDate DESC, historyID DESC;
+   ```
+
+Advanced queries:
+
+1. Show asset names with history rows.
+
+   ```sql
+   SELECT a.assetName, h.previousStatus, h.newStatus, h.changeDate
+   FROM asset_status_history h
+   JOIN asset a ON h.assetID = a.assetID
+   ORDER BY h.changeDate DESC, h.historyID DESC;
+   ```
+
+2. Count status changes per asset.
+
+   ```sql
+   SELECT assetID, COUNT(*) AS total
+   FROM asset_status_history
+   GROUP BY assetID
+   ORDER BY total DESC, assetID;
+   ```
+
+3. Show assets that were ever damaged.
+
+   ```sql
+   SELECT DISTINCT assetID
+   FROM asset_status_history
+   WHERE newStatus = 'Damaged'
+   ORDER BY assetID;
+   ```
+
+4. Show the latest recorded status for each asset.
+
+   ```sql
+   SELECT DISTINCT ON (assetID) assetID, newStatus, changeDate
+   FROM asset_status_history
+   ORDER BY assetID, changeDate DESC, historyID DESC;
+   ```
+
+5. Show assets with three or more status changes.
+
+   ```sql
+   SELECT assetID, COUNT(*) AS total
+   FROM asset_status_history
+   GROUP BY assetID
+   HAVING COUNT(*) >= 3
+   ORDER BY total DESC, assetID;
+   ```
+
+### Abdullah Alrasheed: User Management Page
+
+Basic queries:
+
+1. Show all users.
+
+   ```sql
+   SELECT *
+   FROM users
+   ORDER BY userType, userFullName, userID;
+   ```
+
+2. Filter users by role.
+
+   ```sql
+   SELECT *
+   FROM users
+   WHERE userType = %s
+   ORDER BY userFullName, userID;
+   ```
+
+3. Add a new user and role record.
+
+   ```sql
+   INSERT INTO users (userID, userFullName, email, department, passwordHash, userType)
+   VALUES (%s, %s, %s, %s, %s, %s);
+
+   INSERT INTO admin (userID) VALUES (%s);
+   ```
+
+   Employee users use the same second insert with `employee` instead of `admin`.
+
+4. Update a user's department.
+
+   ```sql
+   UPDATE users
+   SET department = %s
+   WHERE userID = %s;
+   ```
+
+5. Delete a user after checking references.
+
+   ```sql
+   DELETE FROM admin
+   WHERE userID = %s;
+
+   DELETE FROM users
+   WHERE userID = %s;
+   ```
+
+   Employee users use `employee` instead of `admin`. The route first checks assignment and history references.
+
+Advanced queries:
+
+1. Show each user with the number of assigned assets.
+
+   ```sql
+   SELECT u.userFullName, COUNT(aa.assignmentID) AS total
+   FROM users u
+   LEFT JOIN asset_assignment aa ON u.userID = aa.userID
+   GROUP BY u.userID, u.userFullName
+   ORDER BY total DESC, u.userFullName;
+   ```
+
+2. Show employees with no active asset.
+
+   ```sql
+   SELECT *
+   FROM users
+   WHERE userType = 'Employee'
+     AND userID NOT IN (
+       SELECT userID FROM asset_assignment WHERE returnDate IS NULL
+     )
+   ORDER BY userID;
+   ```
+
+3. Count users per department.
+
+   ```sql
+   SELECT COALESCE(department, '(none)') AS department, COUNT(*) AS total
+   FROM users
+   GROUP BY department
+   ORDER BY total DESC;
+   ```
+
+4. Show the user with the most assignments ever.
+
+   ```sql
+   SELECT u.userID, u.userFullName, COUNT(*) AS total
+   FROM asset_assignment aa
+   JOIN users u ON aa.userID = u.userID
+   GROUP BY u.userID, u.userFullName
+   ORDER BY total DESC
+   LIMIT 1;
+   ```
+
+5. Count admins and employees.
+
+   ```sql
+   SELECT userType, COUNT(*) AS total
+   FROM users
+   GROUP BY userType
+   ORDER BY total DESC;
+   ```
+
+### Fares Hassan: Asset Management Page
+
+Basic queries:
+
+1. Show all assets.
+
+   ```sql
+   SELECT *
+   FROM asset
+   ORDER BY status, assetName, assetID;
+   ```
+
+2. Filter assets by status, category, and serial number.
+
+   ```sql
+   SELECT *
+   FROM asset
+   WHERE status = %s
+     AND category ILIKE %s
+     AND serialNum ILIKE %s
+   ORDER BY assetID;
+   ```
+
+   The route builds the `WHERE` clause only for filters the user provides.
+
+3. Add a new asset.
+
+   ```sql
+   INSERT INTO asset (assetID, assetName, category, status, serialNum)
+   VALUES (%s, %s, %s, %s, %s);
+   ```
+
+4. Update asset status and record the history row.
+
+   ```sql
+   UPDATE asset
+   SET status = %s
+   WHERE assetID = %s;
+
+   INSERT INTO asset_status_history
+       (historyID, previousStatus, newStatus, changeDate, assetID, changedBy)
+   VALUES (%s, %s, %s, CURRENT_DATE, %s, %s);
+   ```
+
+5. Delete an asset after checking it has no active assignment.
+
+   ```sql
+   DELETE FROM asset
+   WHERE assetID = %s;
+   ```
+
+Advanced queries:
+
+1. Show each active asset with its current holder.
+
+   ```sql
+   SELECT a.assetName, u.userFullName
+   FROM asset a
+   JOIN asset_assignment aa ON a.assetID = aa.assetID
+   JOIN users u ON aa.userID = u.userID
+   WHERE aa.returnDate IS NULL
+   ORDER BY a.assetName;
+   ```
+
+2. Show assets that have never been assigned.
+
+   ```sql
+   SELECT *
+   FROM asset
+   WHERE assetID NOT IN (SELECT assetID FROM asset_assignment)
+   ORDER BY assetID;
+   ```
+
+3. Count assets by category.
+
+   ```sql
+   SELECT category, COUNT(*) AS total
+   FROM asset
+   GROUP BY category
+   ORDER BY total DESC;
+   ```
+
+4. Show assets assigned more than once.
+
+   ```sql
+   SELECT assetID, COUNT(*) AS total
+   FROM asset_assignment
+   GROUP BY assetID
+   HAVING COUNT(*) > 1
+   ORDER BY total DESC;
+   ```
+
+5. Show assets purchased this year.
+
+   ```sql
+   SELECT *
+   FROM asset
+   WHERE EXTRACT(YEAR FROM purchaseDate) = EXTRACT(YEAR FROM CURRENT_DATE)
+   ORDER BY assetID;
+   ```
+
+### Mohammed Almuaigel: Asset Assignment Page
+
+Basic queries:
+
+1. Show all active assignments.
+
+   ```sql
+   SELECT aa.assignmentID, aa.assignedDate, aa.returnDate,
+          aa.assetID, aa.userID, aa.assignedBy,
+          a.assetName, u.userFullName
+   FROM asset_assignment aa
+   JOIN asset a ON aa.assetID = a.assetID
+   JOIN users u ON aa.userID = u.userID
+   WHERE aa.returnDate IS NULL
+   ORDER BY aa.assignedDate DESC, aa.assignmentID DESC;
+   ```
+
+2. Show returned assignments.
+
+   ```sql
+   SELECT aa.assignmentID, aa.assignedDate, aa.returnDate,
+          aa.assetID, aa.userID, aa.assignedBy,
+          a.assetName, u.userFullName
+   FROM asset_assignment aa
+   JOIN asset a ON aa.assetID = a.assetID
+   JOIN users u ON aa.userID = u.userID
+   WHERE aa.returnDate IS NOT NULL
+   ORDER BY aa.returnDate DESC, aa.assignmentID DESC;
+   ```
+
+3. Assign an asset and update its status history.
+
+   ```sql
+   INSERT INTO asset_assignment (assignmentID, assignedDate, assetID, userID, assignedBy)
+   VALUES (%s, CURRENT_DATE, %s, %s, %s);
+
+   UPDATE asset
+   SET status = %s
+   WHERE assetID = %s;
+
+   INSERT INTO asset_status_history
+       (historyID, previousStatus, newStatus, changeDate, assetID, changedBy)
+   VALUES (%s, %s, %s, CURRENT_DATE, %s, %s);
+   ```
+
+4. Mark an assignment returned and update asset status.
+
+   ```sql
+   UPDATE asset_assignment
+   SET returnDate = CURRENT_DATE
+   WHERE assignmentID = %s;
+
+   UPDATE asset
+   SET status = %s
+   WHERE assetID = %s;
+   ```
+
+5. Show an employee's own assignments.
+
+   ```sql
+   SELECT aa.assignmentID, aa.assignedDate, aa.returnDate,
+          aa.assetID, aa.userID, aa.assignedBy,
+          a.assetName, u.userFullName
+   FROM asset_assignment aa
+   JOIN asset a ON aa.assetID = a.assetID
+   JOIN users u ON aa.userID = u.userID
+   WHERE aa.userID = %s
+   ORDER BY aa.assignedDate DESC, aa.assignmentID DESC;
+   ```
+
+Advanced queries:
+
+1. Show active assignments with asset and employee names.
+
+   ```sql
+   SELECT aa.assignmentID, aa.assignedDate, aa.returnDate,
+          aa.assetID, aa.userID, aa.assignedBy,
+          a.assetName, u.userFullName
+   FROM asset_assignment aa
+   JOIN asset a ON aa.assetID = a.assetID
+   JOIN users u ON aa.userID = u.userID
+   WHERE aa.returnDate IS NULL
+   ORDER BY aa.assignedDate DESC, aa.assignmentID DESC;
+   ```
+
+2. Show the average number of days assets were kept.
+
+   ```sql
+   SELECT ROUND(AVG(returnDate - assignedDate), 1)
+   FROM asset_assignment
+   WHERE returnDate IS NOT NULL;
+   ```
+
+3. Show users with the most assignments.
+
+   ```sql
+   SELECT userID, COUNT(*) AS total
+   FROM asset_assignment
+   GROUP BY userID
+   ORDER BY total DESC;
+   ```
+
+4. Show assignments returned within seven days.
+
+   ```sql
+   SELECT aa.assignmentID, aa.assignedDate, aa.returnDate,
+          aa.assetID, aa.userID, aa.assignedBy,
+          a.assetName, u.userFullName
+   FROM asset_assignment aa
+   JOIN asset a ON aa.assetID = a.assetID
+   JOIN users u ON aa.userID = u.userID
+   WHERE aa.returnDate IS NOT NULL
+     AND (aa.returnDate - aa.assignedDate) <= 7
+   ORDER BY aa.returnDate DESC, aa.assignmentID DESC;
+   ```
+
+5. Show assets assigned more than once.
+
+   ```sql
+   SELECT assetID, COUNT(*) AS total
+   FROM asset_assignment
+   GROUP BY assetID
+   HAVING COUNT(*) > 1
+   ORDER BY total DESC;
+   ```
+
+### Abdulrahman Solimanie: Leader, Setup, Login, Dashboard, and Integration
+
+This work connects the whole application instead of owning one separate ten-query CRUD page. It includes Flask app setup, blueprint registration, `.env` loading, database helpers, CSRF protection, login/session handling, dashboard integration, tests, deployment setup, and final route compatibility.
+
+Supporting login and dashboard queries:
+
+1. Login account lookup.
+
+   ```sql
+   SELECT userID, userFullName, passwordHash, userType
+   FROM users
+   WHERE email = %s;
+   ```
+
+2. Admin dashboard total assets.
+
+   ```sql
+   SELECT COUNT(*) AS total
+   FROM asset;
+   ```
+
+3. Admin dashboard status summary.
+
+   ```sql
+   SELECT
+       SUM(CASE WHEN status='Available' THEN 1 ELSE 0 END) AS available,
+       SUM(CASE WHEN status='Assigned'  THEN 1 ELSE 0 END) AS assigned,
+       SUM(CASE WHEN status='Damaged'   THEN 1 ELSE 0 END) AS damaged
+   FROM asset;
+   ```
+
+4. Admin dashboard recent active assignments.
+
+   ```sql
+   SELECT a.assetName, u.userFullName, aa.assignedDate
+   FROM asset_assignment aa
+   JOIN asset a ON aa.assetID = a.assetID
+   JOIN users u ON aa.userID = u.userID
+   WHERE aa.returnDate IS NULL
+   ORDER BY aa.assignedDate DESC
+   LIMIT 5;
+   ```
+
+5. Employee dashboard active assignment count.
+
+   ```sql
+   SELECT COUNT(*)
+   FROM asset_assignment
+   WHERE userID = %s AND returnDate IS NULL;
+   ```
+
+6. Employee dashboard recent assignment list.
+
+   ```sql
+   SELECT a.assetName, aa.assignedDate
+   FROM asset_assignment aa
+   JOIN asset a ON aa.assetID = a.assetID
+   WHERE aa.userID = %s
+   ORDER BY aa.assignedDate DESC, aa.assignmentID DESC
+   LIMIT 5;
+   ```
 
 ## Project Structure
 
@@ -54,7 +547,7 @@ All ten seeded users follow the pattern `hash_<userID>`.
 |   |-- assets.py                # /assets CRUD, filters, analytics
 |   |-- assignments.py           # /assignments workflow and analytics
 |   |-- users.py                 # /users CRUD and analytics
-|   `-- history.py               # placeholder, waiting for teammate implementation
+|   `-- history.py               # /history status-history page
 |-- templates/                   # Jinja2 templates
 |-- migrations/
 |   `-- 01_add_fk_indexes.sql    # additive FK indexes for Supabase
@@ -133,10 +626,6 @@ python -m unittest discover -s tests -v
 ```
 
 The test suite mocks database calls, so it does not modify Supabase data.
-
-## History Page Status
-
-The History page is owned by a teammate and is intentionally still a placeholder. `history_bp` is not registered in [app.py](app.py) yet. Add it only after `routes/history.py` is delivered.
 
 ## Deployment
 
