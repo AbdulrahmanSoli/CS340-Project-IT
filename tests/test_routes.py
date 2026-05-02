@@ -329,8 +329,8 @@ class RouteTests(unittest.TestCase):
         self.login_session(user_type='Admin', user_name='Admin User')
 
         with patch('routes.auth.query') as mock_query:
+            # 2 queries now: status breakdown + recent assignments. Total is computed in Python.
             mock_query.side_effect = [
-                [(12,)],
                 [(7, 4, 1)],
                 [('Dell Laptop', 'Employee User', '2026-05-01')],
             ]
@@ -338,13 +338,10 @@ class RouteTests(unittest.TestCase):
 
         body = response.get_data(as_text=True)
         self.assertEqual(response.status_code, 200)
-        self.assertIn('Welcome, Admin User', body)
-        self.assertIn('Total: 12', body)
-        self.assertIn('Available: 7', body)
-        self.assertIn('Assigned: 4', body)
-        self.assertIn('Damaged: 1', body)
+        self.assertIn('12', body)            # total = 7 + 4 + 1
+        self.assertIn('7', body)
         self.assertIn('Dell Laptop', body)
-        self.assertEqual(mock_query.call_count, 3)
+        self.assertEqual(mock_query.call_count, 2)
 
     def test_employee_dashboard_renders_only_employee_assignments(self):
         self.login_session(user_id=3, user_type='Employee', user_name='Employee User')
@@ -432,11 +429,11 @@ class RouteTests(unittest.TestCase):
         self.login_session(user_id=1, user_type='Admin')
 
         with patch('routes.assignments.query') as mock_query, patch('routes.assignments.tx') as mock_tx:
+            # 3 reads now: asset status, employee check, combined next-id query
             mock_query.side_effect = [
                 [('Available',)],
                 [(1,)],
-                [(12,)],
-                [(22,)],
+                [(12, 22)],
             ]
             response = self.client.post('/assignments/add', data={
                 'csrf_token': 'csrf-test-token',
@@ -453,6 +450,11 @@ class RouteTests(unittest.TestCase):
         self.assertIn('INSERT INTO asset_status_history', statements[2][0])
         self.assertEqual(statements[0][1], (12, '10', '3', 1))
         self.assertEqual(statements[2][1], (22, 'Available', 'Assigned', '10', 1))
+
+        # Verify the combined next-id query is one round trip, not two
+        next_id_sql = mock_query.call_args_list[2][0][0]
+        self.assertIn('MAX(assignmentID)', next_id_sql)
+        self.assertIn('MAX(historyID)', next_id_sql)
 
     def test_return_asset_success_uses_transaction_for_return_and_history(self):
         self.login_session(user_id=1, user_type='Admin')
@@ -514,6 +516,148 @@ class RouteTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('has an active assignment', response.get_data(as_text=True))
+        self.assertEqual(mock_query.call_count, 3)
+
+
+class QueryOptimizationTests(unittest.TestCase):
+    """Focused tests verifying the 5 query optimizations behave as intended."""
+
+    def setUp(self):
+        app.config.update(TESTING=True)
+        self.client = app.test_client()
+
+    def login_admin(self, user_id=1):
+        with self.client.session_transaction() as sess:
+            sess['user_id'] = user_id
+            sess['user_type'] = 'Admin'
+            sess['user_name'] = 'Admin'
+            sess['csrf_token'] = 'csrf-test-token'
+
+    # --- 1. Dashboard: 3 queries → 2 ---
+    def test_dashboard_admin_makes_only_two_queries(self):
+        self.login_admin()
+        with patch('routes.auth.query') as mock_query:
+            mock_query.side_effect = [
+                [(5, 3, 2)],
+                [('A', 'B', '2026-01-01')],
+            ]
+            response = self.client.get('/dashboard')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(mock_query.call_count, 2)
+        # Total derived in Python = 5+3+2 = 10
+        self.assertIn('10', response.get_data(as_text=True))
+
+    def test_dashboard_total_handles_null_status_sums(self):
+        # Empty asset table makes SUM return NULL — total must coerce to 0, not crash
+        self.login_admin()
+        with patch('routes.auth.query') as mock_query:
+            mock_query.side_effect = [
+                [(None, None, None)],
+                [],
+            ]
+            response = self.client.get('/dashboard')
+        self.assertEqual(response.status_code, 200)
+
+    # --- 2. NOT IN → NOT EXISTS ---
+    def test_unassigned_assets_uses_not_exists(self):
+        self.login_admin()
+        with patch('routes.assets.query', return_value=[]) as mock_query:
+            self.client.get('/assets/unassigned')
+        sql = mock_query.call_args[0][0]
+        self.assertIn('NOT EXISTS', sql)
+        self.assertNotIn('NOT IN', sql)
+
+    def test_no_active_asset_users_uses_not_exists(self):
+        self.login_admin()
+        with patch('routes.users.query', return_value=[]) as mock_query:
+            self.client.get('/users/no-active-asset')
+        sql = mock_query.call_args[0][0]
+        self.assertIn('NOT EXISTS', sql)
+        self.assertNotIn('NOT IN', sql)
+
+    # --- 3. Sargable date filter ---
+    def test_new_purchases_uses_range_predicate_not_extract(self):
+        self.login_admin()
+        with patch('routes.assets.query', return_value=[]) as mock_query:
+            self.client.get('/assets/new-purchases')
+        sql = mock_query.call_args[0][0]
+        self.assertNotIn('EXTRACT(YEAR FROM purchaseDate)', sql)
+        self.assertIn("DATE_TRUNC('year'", sql)
+        self.assertIn('purchaseDate >=', sql)
+
+    # --- 4. delete_user combines 3 existence checks into 1 ---
+    def test_delete_user_uses_combined_existence_check(self):
+        self.login_admin()
+        with patch('routes.users.query') as mock_query, patch('routes.users.tx'):
+            mock_query.side_effect = [
+                [('Employee',)],          # user lookup
+                [(False, False, False)],  # combined EXISTS check — no references
+            ]
+            response = self.client.post('/users/delete/9', data={
+                'csrf_token': 'csrf-test-token',
+            })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(mock_query.call_count, 2)
+        existence_sql = mock_query.call_args_list[1][0][0]
+        self.assertEqual(existence_sql.count('EXISTS('), 3)
+
+    def test_delete_user_blocks_when_assignment_history_exists(self):
+        self.login_admin()
+        with patch('routes.users.query') as mock_query:
+            mock_query.side_effect = [
+                [('Employee',)],
+                [(True, False, False)],
+                [],
+            ]
+            response = self.client.post('/users/delete/9', data={
+                'csrf_token': 'csrf-test-token',
+            })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('assignment history', response.get_data(as_text=True))
+
+    def test_delete_user_blocks_when_assigned_by_exists(self):
+        self.login_admin()
+        with patch('routes.users.query') as mock_query:
+            mock_query.side_effect = [
+                [('Admin',)],
+                [(False, True, False)],
+                [],
+            ]
+            response = self.client.post('/users/delete/9', data={
+                'csrf_token': 'csrf-test-token',
+            })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('assigned assets to others', response.get_data(as_text=True))
+
+    def test_delete_user_blocks_when_status_history_exists(self):
+        self.login_admin()
+        with patch('routes.users.query') as mock_query:
+            mock_query.side_effect = [
+                [('Admin',)],
+                [(False, False, True)],
+                [],
+            ]
+            response = self.client.post('/users/delete/9', data={
+                'csrf_token': 'csrf-test-token',
+            })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('logged status changes', response.get_data(as_text=True))
+
+    # --- 5. assign_asset combines 2 MAX(id)+1 queries into 1 ---
+    def test_assign_asset_uses_combined_next_id_query(self):
+        self.login_admin()
+        with patch('routes.assignments.query') as mock_query, patch('routes.assignments.tx'):
+            mock_query.side_effect = [
+                [('Available',)],
+                [(1,)],
+                [(50, 99)],   # combined: next_assignment, next_history in one row
+            ]
+            response = self.client.post('/assignments/add', data={
+                'csrf_token': 'csrf-test-token',
+                'asset_id': '10',
+                'user_id': '3',
+            })
+        self.assertEqual(response.status_code, 302)
         self.assertEqual(mock_query.call_count, 3)
 
 

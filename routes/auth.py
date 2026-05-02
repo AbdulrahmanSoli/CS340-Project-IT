@@ -55,8 +55,6 @@ def dashboard():
                                total=total,
                                recent=recent)
 
-    total = query('SELECT COUNT(*) AS total FROM asset')[0][0]
-
     status_rows = query('''
         SELECT
             SUM(CASE WHEN status='Available' THEN 1 ELSE 0 END) AS available,
@@ -67,6 +65,7 @@ def dashboard():
     available = status_rows[0][0] or 0
     assigned  = status_rows[0][1] or 0
     damaged   = status_rows[0][2] or 0
+    total     = available + assigned + damaged
 
     recent = query('''
         SELECT a.assetName, u.userFullName, aa.assignedDate

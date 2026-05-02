@@ -184,9 +184,11 @@ def unassigned_assets():
     if admin_required():
         return admin_redirect()
     rows = query('''
-        SELECT * FROM asset
-        WHERE assetID NOT IN (SELECT assetID FROM asset_assignment)
-        ORDER BY assetID
+        SELECT a.* FROM asset a
+        WHERE NOT EXISTS (
+            SELECT 1 FROM asset_assignment aa WHERE aa.assetID = a.assetID
+        )
+        ORDER BY a.assetID
     ''') or []
     return _render(assets=rows)
 
@@ -238,7 +240,8 @@ def recent_purchases():
         return admin_redirect()
     rows = query('''
         SELECT * FROM asset
-        WHERE EXTRACT(YEAR FROM purchaseDate) = EXTRACT(YEAR FROM CURRENT_DATE)
+        WHERE purchaseDate >= DATE_TRUNC('year', CURRENT_DATE)
+          AND purchaseDate <  DATE_TRUNC('year', CURRENT_DATE) + INTERVAL '1 year'
         ORDER BY assetID
     ''') or []
     return _render(assets=rows)

@@ -81,8 +81,10 @@ def assign_asset():
     if not query('SELECT 1 FROM employee WHERE userID = %s', (user_id,)):
         return _render_with_error(f'Employee {user_id} does not exist.')
 
-    next_assignment = query('SELECT COALESCE(MAX(assignmentID), 0) + 1 FROM asset_assignment')[0][0]
-    next_history = query('SELECT COALESCE(MAX(historyID), 0) + 1 FROM asset_status_history')[0][0]
+    next_assignment, next_history = query('''
+        SELECT (SELECT COALESCE(MAX(assignmentID), 0) + 1 FROM asset_assignment),
+               (SELECT COALESCE(MAX(historyID), 0) + 1     FROM asset_status_history)
+    ''')[0]
     admin_id = session['user_id']
 
     statements = [

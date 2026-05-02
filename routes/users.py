@@ -108,11 +108,16 @@ def delete_user(user_id):
         return _render_with_error(f'User {user_id} does not exist.')
     usertype = rows[0][0]
 
-    if query('SELECT 1 FROM asset_assignment WHERE userID = %s', (user_id,)):
+    has_assignments, has_assigned_by, has_status_changes = query('''
+        SELECT EXISTS(SELECT 1 FROM asset_assignment       WHERE userID = %s),
+               EXISTS(SELECT 1 FROM asset_assignment       WHERE assignedBy = %s),
+               EXISTS(SELECT 1 FROM asset_status_history   WHERE changedBy = %s)
+    ''', (user_id, user_id, user_id))[0]
+    if has_assignments:
         return _render_with_error(f'User {user_id} has assignment history and cannot be deleted.')
-    if query('SELECT 1 FROM asset_assignment WHERE assignedBy = %s', (user_id,)):
+    if has_assigned_by:
         return _render_with_error(f'User {user_id} has assigned assets to others and cannot be deleted.')
-    if query('SELECT 1 FROM asset_status_history WHERE changedBy = %s', (user_id,)):
+    if has_status_changes:
         return _render_with_error(f'User {user_id} has logged status changes and cannot be deleted.')
 
     role_table = 'admin' if usertype == 'Admin' else 'employee'
@@ -150,12 +155,13 @@ def no_active_asset():
     if admin_required():
         return admin_redirect()
     rows = query('''
-        SELECT * FROM users
-        WHERE userType = 'Employee'
-          AND userID NOT IN (
-            SELECT userID FROM asset_assignment WHERE returnDate IS NULL
+        SELECT u.* FROM users u
+        WHERE u.userType = 'Employee'
+          AND NOT EXISTS (
+            SELECT 1 FROM asset_assignment aa
+            WHERE aa.userID = u.userID AND aa.returnDate IS NULL
           )
-        ORDER BY userID
+        ORDER BY u.userID
     ''') or []
     return _render(users=rows)
 
