@@ -12,7 +12,7 @@ def _render(users=None, **extra):
     return render_template('users.html', users=users or [], **extra)
 
 def _render_with_error(msg):
-    rows = query('SELECT * FROM users ORDER BY userType, userFullName, userID') or []
+    rows = query('SELECT * FROM users ORDER BY userType, userID') or []
     return render_template('users.html', users=rows, error=msg)
 
 
@@ -21,7 +21,7 @@ def _render_with_error(msg):
 def list_users():
     if admin_required():
         return admin_redirect()
-    rows = query('SELECT * FROM users ORDER BY userType, userFullName, userID') or []
+    rows = query('SELECT * FROM users ORDER BY userType, userID') or []
     return _render(users=rows)
 
 # Query 2 - filter by role
@@ -32,7 +32,7 @@ def filter_users():
     usertype = request.args.get('type', '')
     if usertype not in VALID_TYPES:
         return _render_with_error('Invalid user type filter.')
-    rows = query('SELECT * FROM users WHERE userType = %s ORDER BY userFullName, userID', (usertype,)) or []
+    rows = query('SELECT * FROM users WHERE userType = %s ORDER BY userID', (usertype,)) or []
     return _render(users=rows)
 
 # Query 3 - add a new user (admin only)
@@ -140,7 +140,7 @@ def users_assets_count():
         FROM users u
         LEFT JOIN asset_assignment aa ON u.userID = aa.userID
         GROUP BY u.userID, u.userFullName
-        ORDER BY total DESC, u.userFullName
+        ORDER BY total DESC, u.userID
     ''') or []
     return _render(asset_counts=rows)
 
@@ -182,7 +182,7 @@ def most_assignments():
         FROM asset_assignment aa
         JOIN users u ON aa.userID = u.userID
         GROUP BY u.userID, u.userFullName
-        ORDER BY total DESC
+        ORDER BY total DESC, u.userID
         LIMIT 1
     ''') or []
     return _render(top_user=rows)

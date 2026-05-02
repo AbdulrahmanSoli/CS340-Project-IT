@@ -175,7 +175,7 @@ def avg_days():
 def top_users():
     if admin_required():
         return admin_redirect()
-    rows = query('SELECT userID, COUNT(*) AS total FROM asset_assignment GROUP BY userID ORDER BY total DESC')
+    rows = query('SELECT userID, COUNT(*) AS total FROM asset_assignment GROUP BY userID ORDER BY total DESC, userID')
     return render_template('assignments.html', assignments=[], top_users=rows, **_form_options())
 
 # Query 9 - returned within 7 days
@@ -192,5 +192,5 @@ def quick_returns():
 def repeated_assets():
     if admin_required():
         return admin_redirect()
-    rows = query('SELECT assetID, COUNT(*) AS total FROM asset_assignment GROUP BY assetID HAVING COUNT(*) > 1 ORDER BY total DESC')
+    rows = query('SELECT assetID, COUNT(*) AS total FROM asset_assignment GROUP BY assetID HAVING COUNT(*) > 1 ORDER BY total DESC, assetID')
     return render_template('assignments.html', assignments=[], repeated=rows, **_form_options())

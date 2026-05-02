@@ -24,15 +24,15 @@
       <table class="data">
         <thead>
           <tr>
-            <th>ID</th><th>Asset</th><th>Employee</th>
-            <th>Assigned</th><th>Returned</th>
-            {% if session['user_type'] == 'Admin' %}<th style="width:1%">Action</th>{% endif %}
+            <th class="col-id">ID</th><th>Asset</th><th>Employee</th>
+            <th>Assigned</th><th class="col-center">Returned</th>
+            {% if session['user_type'] == 'Admin' %}<th class="col-actions">Action</th>{% endif %}
           </tr>
         </thead>
         <tbody>
           {% for a in assignments %}
           <tr>
-            <td><span class="id-chip">#{{ a[0] }}</span></td>
+            <td class="col-id"><span class="id-chip">#{{ a[0] }}</span></td>
             <td>
               {% if a|length > 6 %}<span style="font-weight:500">{{ a[6] }}</span> <span class="id-chip">#{{ a[3] }}</span>
               {% else %}<span class="id-chip">#{{ a[3] }}</span>{% endif %}
@@ -42,12 +42,12 @@
               {% else %}<span class="id-chip">#{{ a[4] }}</span>{% endif %}
             </td>
             <td class="mono">{{ a[1] }}</td>
-            <td>
+            <td class="col-center">
               {% if a[2] %}<span class="pill pill-returned">{{ a[2] }}</span>
               {% else %}<span class="pill pill-active">Active</span>{% endif %}
             </td>
             {% if session['user_type'] == 'Admin' %}
-            <td>
+            <td class="col-actions">
               {% if a[2] is none %}
               <form method="POST" action="/assignments/return/{{ a[0] }}" class="inline-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -83,9 +83,9 @@
   <div class="card-body-tight">
     <div class="table-wrap">
       <table class="data">
-        <thead><tr><th>User ID</th><th class="num">Total</th></tr></thead>
+        <thead><tr><th class="col-id">User ID</th><th class="col-right num">Total</th></tr></thead>
         <tbody>
-          {% for r in top_users %}<tr><td><span class="id-chip">#{{ r[0] }}</span></td><td class="num mono">{{ r[1] }}</td></tr>{% endfor %}
+          {% for r in top_users %}<tr><td class="col-id"><span class="id-chip">#{{ r[0] }}</span></td><td class="col-right num mono">{{ r[1] }}</td></tr>{% endfor %}
         </tbody>
       </table>
     </div>
@@ -99,9 +99,9 @@
   <div class="card-body-tight">
     <div class="table-wrap">
       <table class="data">
-        <thead><tr><th>Asset ID</th><th class="num">Times assigned</th></tr></thead>
+        <thead><tr><th class="col-id">Asset ID</th><th class="col-right num">Times assigned</th></tr></thead>
         <tbody>
-          {% for r in repeated %}<tr><td><span class="id-chip">#{{ r[0] }}</span></td><td class="num mono">{{ r[1] }}</td></tr>{% endfor %}
+          {% for r in repeated %}<tr><td class="col-id"><span class="id-chip">#{{ r[0] }}</span></td><td class="col-right num mono">{{ r[1] }}</td></tr>{% endfor %}
         </tbody>
       </table>
     </div>
@@ -146,10 +146,10 @@
         <summary style="cursor:pointer;font-weight:500;font-size:13px">Available assets ({{ available_assets|length }})</summary>
         <div class="table-wrap" style="margin-top:8px">
           <table class="data">
-            <thead><tr><th>ID</th><th>Name</th><th>Category</th></tr></thead>
+            <thead><tr><th class="col-id">ID</th><th>Name</th><th>Category</th></tr></thead>
             <tbody>
               {% for a in available_assets %}
-              <tr><td><span class="id-chip">#{{ a[0] }}</span></td><td>{{ a[1] }}</td><td>{{ a[2] }}</td></tr>
+              <tr><td class="col-id"><span class="id-chip">#{{ a[0] }}</span></td><td>{{ a[1] }}</td><td>{{ a[2] }}</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -159,10 +159,10 @@
         <summary style="cursor:pointer;font-weight:500;font-size:13px">Employees ({{ employees|length }})</summary>
         <div class="table-wrap" style="margin-top:8px">
           <table class="data">
-            <thead><tr><th>ID</th><th>Name</th><th>Department</th></tr></thead>
+            <thead><tr><th class="col-id">ID</th><th>Name</th><th>Department</th></tr></thead>
             <tbody>
               {% for e in employees %}
-              <tr><td><span class="id-chip">#{{ e[0] }}</span></td><td>{{ e[1] }}</td><td>{{ e[2] }}</td></tr>
+              <tr><td class="col-id"><span class="id-chip">#{{ e[0] }}</span></td><td>{{ e[1] }}</td><td>{{ e[2] }}</td></tr>
               {% endfor %}
             </tbody>
           </table>

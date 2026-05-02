@@ -55,18 +55,18 @@
   <div class="card-body-tight">
     <div class="table-wrap">
       <table class="data">
-        <thead><tr><th>Asset ID</th><th>From</th><th>To</th><th>Date</th></tr></thead>
+        <thead><tr><th class="col-id">Asset ID</th><th class="col-center">From</th><th class="col-center">To</th><th>Date</th></tr></thead>
         <tbody>
           {% for h in history %}
           <tr>
-            <td><span class="id-chip">#{{ h[4] }}</span></td>
-            <td>
+            <td class="col-id"><span class="id-chip">#{{ h[4] }}</span></td>
+            <td class="col-center">
               {% if h[1] == 'Available' %}<span class="pill pill-available">Available</span>
               {% elif h[1] == 'Assigned' %}<span class="pill pill-assigned">Assigned</span>
               {% elif h[1] == 'Damaged' %}<span class="pill pill-damaged">Damaged</span>
               {% else %}<span class="pill">{{ h[1] }}</span>{% endif %}
             </td>
-            <td>
+            <td class="col-center">
               {% if h[2] == 'Available' %}<span class="pill pill-available">Available</span>
               {% elif h[2] == 'Assigned' %}<span class="pill pill-assigned">Assigned</span>
               {% elif h[2] == 'Damaged' %}<span class="pill pill-damaged">Damaged</span>
@@ -86,10 +86,10 @@
   <div class="card-body-tight">
     <div class="table-wrap">
       <table class="data">
-        <thead><tr><th>Asset</th><th>From</th><th>To</th><th>Date</th></tr></thead>
+        <thead><tr><th>Asset</th><th class="col-center">From</th><th class="col-center">To</th><th>Date</th></tr></thead>
         <tbody>
           {% for h in named_history %}
-          <tr><td>{{ h[0] }}</td><td>{{ h[1] }}</td><td>{{ h[2] }}</td><td class="mono">{{ h[3] }}</td></tr>
+          <tr><td>{{ h[0] }}</td><td class="col-center">{{ h[1] }}</td><td class="col-center">{{ h[2] }}</td><td class="mono">{{ h[3] }}</td></tr>
           {% endfor %}
         </tbody>
       </table>
@@ -102,8 +102,8 @@
   <div class="card-body-tight">
     <div class="table-wrap">
       <table class="data">
-        <thead><tr><th>Asset ID</th><th class="num">Total</th></tr></thead>
-        <tbody>{% for r in asset_counts %}<tr><td><span class="id-chip">#{{ r[0] }}</span></td><td class="num mono">{{ r[1] }}</td></tr>{% endfor %}</tbody>
+        <thead><tr><th class="col-id">Asset ID</th><th class="col-right num">Total</th></tr></thead>
+        <tbody>{% for r in asset_counts %}<tr><td class="col-id"><span class="id-chip">#{{ r[0] }}</span></td><td class="col-right num mono">{{ r[1] }}</td></tr>{% endfor %}</tbody>
       </table>
     </div>
   </div>
@@ -114,8 +114,8 @@
   <div class="card-body-tight">
     <div class="table-wrap">
       <table class="data">
-        <thead><tr><th>Asset ID</th></tr></thead>
-        <tbody>{% for r in damaged_assets %}<tr><td><span class="id-chip">#{{ r[0] }}</span></td></tr>{% endfor %}</tbody>
+        <thead><tr><th class="col-id">Asset ID</th></tr></thead>
+        <tbody>{% for r in damaged_assets %}<tr><td class="col-id"><span class="id-chip">#{{ r[0] }}</span></td></tr>{% endfor %}</tbody>
       </table>
     </div>
   </div>
@@ -126,12 +126,12 @@
   <div class="card-body-tight">
     <div class="table-wrap">
       <table class="data">
-        <thead><tr><th>Asset ID</th><th>Status</th><th>Date</th></tr></thead>
+        <thead><tr><th class="col-id">Asset ID</th><th class="col-center">Status</th><th>Date</th></tr></thead>
         <tbody>
           {% for r in latest_statuses %}
           <tr>
-            <td><span class="id-chip">#{{ r[0] }}</span></td>
-            <td>
+            <td class="col-id"><span class="id-chip">#{{ r[0] }}</span></td>
+            <td class="col-center">
               {% if r[1] == 'Available' %}<span class="pill pill-available">Available</span>
               {% elif r[1] == 'Assigned' %}<span class="pill pill-assigned">Assigned</span>
               {% elif r[1] == 'Damaged' %}<span class="pill pill-damaged">Damaged</span>
@@ -151,8 +151,8 @@
   <div class="card-body-tight">
     <div class="table-wrap">
       <table class="data">
-        <thead><tr><th>Asset ID</th><th class="num">Total</th></tr></thead>
-        <tbody>{% for r in frequent_assets %}<tr><td><span class="id-chip">#{{ r[0] }}</span></td><td class="num mono">{{ r[1] }}</td></tr>{% endfor %}</tbody>
+        <thead><tr><th class="col-id">Asset ID</th><th class="col-right num">Total</th></tr></thead>
+        <tbody>{% for r in frequent_assets %}<tr><td class="col-id"><span class="id-chip">#{{ r[0] }}</span></td><td class="col-right num mono">{{ r[1] }}</td></tr>{% endfor %}</tbody>
       </table>
     </div>
   </div>

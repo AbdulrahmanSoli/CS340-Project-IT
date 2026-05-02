@@ -34,24 +34,26 @@
     <div class="table-wrap">
       <table class="data">
         <thead>
-          <tr><th>ID</th><th>Name</th><th>Email</th><th>Department</th><th>Created</th><th>Role</th><th style="width:1%">Actions</th></tr>
+          <tr><th class="col-id">ID</th><th>Name</th><th>Email</th><th>Department</th><th>Created</th><th class="col-center">Role</th><th class="col-actions">Actions</th></tr>
         </thead>
         <tbody>
           {% for u in users %}
           <tr>
-            <td><span class="id-chip">#{{ u[0] }}</span></td>
-            <td style="display:flex;align-items:center;gap:10px">
-              <span class="avatar" style="width:26px;height:26px;font-size:11px">{{ (u[1] or 'U')[0]|upper }}</span>
-              <span style="font-weight:500">{{ u[1] }}</span>
+            <td class="col-id"><span class="id-chip">#{{ u[0] }}</span></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span class="avatar" style="width:26px;height:26px;font-size:11px">{{ (u[1] or 'U')[0]|upper }}</span>
+                <span style="font-weight:500">{{ u[1] }}</span>
+              </div>
             </td>
             <td class="mono">{{ u[2] }}</td>
             <td>{{ u[3] or '—' }}</td>
             <td class="mono">{{ u[5] }}</td>
-            <td>
+            <td class="col-center">
               {% if u[6] == 'Admin' %}<span class="pill pill-admin">Admin</span>
               {% else %}<span class="pill pill-employee">Employee</span>{% endif %}
             </td>
-            <td>
+            <td class="col-actions">
               <div class="row-actions">
                 {% if u[6] == 'Employee' %}
                 <a class="btn btn-sm" href="/assignments/employee/{{ u[0] }}">Assignments</a>
@@ -81,8 +83,8 @@
   <div class="card-body-tight">
     <div class="table-wrap">
       <table class="data">
-        <thead><tr><th>Name</th><th class="num">Total assignments</th></tr></thead>
-        <tbody>{% for r in asset_counts %}<tr><td>{{ r[0] }}</td><td class="num mono">{{ r[1] }}</td></tr>{% endfor %}</tbody>
+        <thead><tr><th>Name</th><th class="col-right num">Total assignments</th></tr></thead>
+        <tbody>{% for r in asset_counts %}<tr><td>{{ r[0] }}</td><td class="col-right num mono">{{ r[1] }}</td></tr>{% endfor %}</tbody>
       </table>
     </div>
   </div>
@@ -95,8 +97,8 @@
   <div class="card-body-tight">
     <div class="table-wrap">
       <table class="data">
-        <thead><tr><th>Department</th><th class="num">Total</th></tr></thead>
-        <tbody>{% for r in dept_counts %}<tr><td>{{ r[0] }}</td><td class="num mono">{{ r[1] }}</td></tr>{% endfor %}</tbody>
+        <thead><tr><th>Department</th><th class="col-right num">Total</th></tr></thead>
+        <tbody>{% for r in dept_counts %}<tr><td>{{ r[0] }}</td><td class="col-right num mono">{{ r[1] }}</td></tr>{% endfor %}</tbody>
       </table>
     </div>
   </div>
@@ -109,8 +111,8 @@
   <div class="card-body-tight">
     <div class="table-wrap">
       <table class="data">
-        <thead><tr><th>User ID</th><th>Name</th><th class="num">Total</th></tr></thead>
-        <tbody>{% for r in top_user %}<tr><td><span class="id-chip">#{{ r[0] }}</span></td><td>{{ r[1] }}</td><td class="num mono">{{ r[2] }}</td></tr>{% endfor %}</tbody>
+        <thead><tr><th class="col-id">User ID</th><th>Name</th><th class="col-right num">Total</th></tr></thead>
+        <tbody>{% for r in top_user %}<tr><td class="col-id"><span class="id-chip">#{{ r[0] }}</span></td><td>{{ r[1] }}</td><td class="col-right num mono">{{ r[2] }}</td></tr>{% endfor %}</tbody>
       </table>
     </div>
   </div>
@@ -123,15 +125,15 @@
   <div class="card-body-tight">
     <div class="table-wrap">
       <table class="data">
-        <thead><tr><th>Role</th><th class="num">Total</th></tr></thead>
+        <thead><tr><th class="col-center">Role</th><th class="col-right num">Total</th></tr></thead>
         <tbody>
           {% for r in type_counts %}
           <tr>
-            <td>
+            <td class="col-center">
               {% if r[0] == 'Admin' %}<span class="pill pill-admin">Admin</span>
               {% else %}<span class="pill pill-employee">{{ r[0] }}</span>{% endif %}
             </td>
-            <td class="num mono">{{ r[1] }}</td>
+            <td class="col-right num mono">{{ r[1] }}</td>
           </tr>
           {% endfor %}
         </tbody>

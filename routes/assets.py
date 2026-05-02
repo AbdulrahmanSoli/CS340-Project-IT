@@ -12,7 +12,7 @@ def _render(assets=None, **extra):
                            **extra)
 
 def _render_with_error(msg):
-    rows = query('SELECT * FROM asset ORDER BY status, assetName, assetID') or []
+    rows = query('SELECT * FROM asset ORDER BY status, assetID') or []
     return render_template('assets.html', assets=rows, error=msg)
 
 
@@ -23,7 +23,7 @@ def _render_with_error(msg):
 def list_assets():
     if admin_required():
         return admin_redirect()
-    rows = query('SELECT * FROM asset ORDER BY status, assetName, assetID') or []
+    rows = query('SELECT * FROM asset ORDER BY status, assetID') or []
     return _render(assets=rows)
 
 # 2. Filter by status, category, and/or serial number
@@ -174,7 +174,7 @@ def current_assignments():
         JOIN asset_assignment aa ON a.assetID = aa.assetID
         JOIN users u ON aa.userID = u.userID
         WHERE aa.returnDate IS NULL
-        ORDER BY a.assetName
+        ORDER BY a.assetName, a.assetID
     ''') or []
     return _render(current_holders=rows)
 
@@ -213,7 +213,7 @@ def frequent_assets():
         FROM asset_assignment
         GROUP BY assetID
         HAVING COUNT(*) > 1
-        ORDER BY total DESC
+        ORDER BY total DESC, assetID
     ''') or []
     return _render(frequent=rows)
 

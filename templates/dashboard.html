@@ -25,13 +25,13 @@
     <div class="table-wrap">
       <table class="data">
         <thead>
-          <tr><th>Asset</th><th>Date assigned</th></tr>
+          <tr><th>Asset</th><th class="col-right">Date assigned</th></tr>
         </thead>
         <tbody>
           {% for r in recent %}
           <tr>
             <td>{{ r[0] }}</td>
-            <td class="mono">{{ r[1] }}</td>
+            <td class="col-right mono">{{ r[1] }}</td>
           </tr>
           {% endfor %}
         </tbody>
@@ -78,14 +78,14 @@
     <div class="table-wrap">
       <table class="data">
         <thead>
-          <tr><th>Asset</th><th>Employee</th><th>Date</th></tr>
+          <tr><th>Asset</th><th>Employee</th><th class="col-right">Date</th></tr>
         </thead>
         <tbody>
           {% for r in recent %}
           <tr>
             <td>{{ r[0] }}</td>
             <td>{{ r[1] }}</td>
-            <td class="mono">{{ r[2] }}</td>
+            <td class="col-right mono">{{ r[2] }}</td>
           </tr>
           {% endfor %}
         </tbody>

@@ -74,7 +74,7 @@ def dashboard():
         JOIN asset a ON aa.assetID = a.assetID
         JOIN users u ON aa.userID = u.userID
         WHERE aa.returnDate IS NULL
-        ORDER BY aa.assignedDate DESC
+        ORDER BY aa.assignedDate DESC, aa.assignmentID DESC
         LIMIT 5
     ''')
 
