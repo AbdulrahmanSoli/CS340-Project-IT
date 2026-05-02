@@ -68,7 +68,49 @@ class RouteTests(unittest.TestCase):
         response = self.client.get('/users')
 
         self.assertEqual(response.status_code, 302)
-        self.assertEqual(response.headers['Location'], '/login')
+        self.assertEqual(response.headers['Location'], '/dashboard')
+
+    def test_employee_admin_asset_filter_redirects_to_dashboard(self):
+        self.login_session(user_id=3, user_type='Employee')
+
+        response = self.client.get('/assets/filter?status=Available')
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers['Location'], '/dashboard')
+
+    def test_employee_admin_get_routes_redirect_to_dashboard(self):
+        self.login_session(user_id=3, user_type='Employee')
+
+        routes = [
+            '/assets',
+            '/assets/filter?status=Available',
+            '/assets/assignments',
+            '/assets/unassigned',
+            '/assets/count-by-category',
+            '/assets/frequent-assignments',
+            '/assets/new-purchases',
+            '/assignments',
+            '/assignments/returned',
+            '/assignments/details',
+            '/assignments/avg-days',
+            '/assignments/top-users',
+            '/assignments/quick-returns',
+            '/assignments/repeated-assets',
+            '/users',
+            '/users/filter?type=Admin',
+            '/users/filter?type=Employee',
+            '/users/assets-count',
+            '/users/no-active-asset',
+            '/users/department-count',
+            '/users/most-assignments',
+            '/users/type-count',
+        ]
+
+        for route in routes:
+            with self.subTest(route=route):
+                response = self.client.get(route)
+                self.assertEqual(response.status_code, 302)
+                self.assertEqual(response.headers['Location'], '/dashboard')
 
     def test_employee_can_open_own_assignments_page(self):
         self.login_session(user_id=3, user_type='Employee')
@@ -77,6 +119,38 @@ class RouteTests(unittest.TestCase):
             response = self.client.get('/assignments/employee/3')
 
         self.assertEqual(response.status_code, 200)
+
+    def test_employee_my_assignments_hides_admin_assignment_links(self):
+        self.login_session(user_id=3, user_type='Employee')
+
+        rows = [(7, '2026-05-01', None, 10, 3, 1, 'Dell Laptop', 'Employee User')]
+        with patch('routes.assignments.query', return_value=rows):
+            response = self.client.get('/assignments/employee/3')
+
+        body = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('<h2>My Assignments</h2>', body)
+        self.assertIn('Dell Laptop (#10)', body)
+        self.assertNotIn("href='/assignments'>Active</a>", body)
+        self.assertNotIn("href='/assignments/returned'", body)
+        self.assertNotIn('/assignments/add', body)
+        self.assertNotIn('Mark Returned', body)
+
+    def test_employee_my_assets_hides_admin_asset_filters(self):
+        self.login_session(user_id=3, user_type='Employee')
+
+        rows = [(10, 'Dell Laptop', 'Laptop', 'Assigned', 'SER-10')]
+        with patch('routes.assets.query', return_value=rows):
+            response = self.client.get('/assets/my')
+
+        body = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('<h2>My Assets</h2>', body)
+        self.assertIn('Dell Laptop', body)
+        self.assertNotIn('/assets/filter?status=Available', body)
+        self.assertNotIn('/assets/unassigned', body)
+        self.assertNotIn('Category contains', body)
+        self.assertNotIn('Mark Damaged', body)
 
     def test_assign_asset_rejects_non_available_asset_before_tx(self):
         self.login_session(user_type='Admin')
@@ -154,6 +228,49 @@ class RouteTests(unittest.TestCase):
         self.assertIn('Damaged: 1', body)
         self.assertIn('Dell Laptop', body)
         self.assertEqual(mock_query.call_count, 3)
+
+    def test_employee_dashboard_renders_only_employee_assignments(self):
+        self.login_session(user_id=3, user_type='Employee', user_name='Employee User')
+
+        with patch('routes.auth.query') as mock_query:
+            mock_query.side_effect = [
+                [(2,)],
+                [('Dell Laptop', '2026-05-01')],
+            ]
+            response = self.client.get('/dashboard')
+
+        body = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Welcome, Employee User', body)
+        self.assertIn('My Assets Overview', body)
+        self.assertIn('Currently assigned: 2', body)
+        self.assertIn('My Recent Assignments', body)
+        self.assertIn('Dell Laptop', body)
+        self.assertNotIn('Available:', body)
+        self.assertNotIn('Employee</th>', body)
+        self.assertEqual(mock_query.call_count, 2)
+
+    def test_logout_get_does_not_clear_session(self):
+        self.login_session(user_type='Admin')
+
+        response = self.client.get('/logout')
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers['Location'], '/dashboard')
+        with self.client.session_transaction() as sess:
+            self.assertEqual(sess['user_type'], 'Admin')
+
+    def test_logout_post_clears_session(self):
+        self.login_session(user_type='Admin')
+
+        response = self.client.post('/logout', data={
+            'csrf_token': 'csrf-test-token',
+        })
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers['Location'], '/login')
+        with self.client.session_transaction() as sess:
+            self.assertNotIn('user_id', sess)
 
     def test_asset_list_renders_row_level_status_actions(self):
         self.login_session(user_type='Admin')

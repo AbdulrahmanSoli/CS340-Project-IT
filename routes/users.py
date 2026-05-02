@@ -2,16 +2,11 @@ import psycopg2
 from flask import Blueprint, flash, render_template, request, redirect, session
 from werkzeug.security import generate_password_hash
 from db import query, tx
+from routes.guards import admin_redirect, admin_required
 
 users_bp = Blueprint('users', __name__)
 
 VALID_TYPES = ('Admin', 'Employee')
-
-def login_required():
-    return 'user_id' not in session
-
-def admin_required():
-    return 'user_id' not in session or session.get('user_type') != 'Admin'
 
 def _render(users=None, **extra):
     return render_template('users.html', users=users or [], **extra)
@@ -25,7 +20,7 @@ def _render_with_error(msg):
 @users_bp.route('/users')
 def list_users():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
     rows = query('SELECT * FROM users ORDER BY userType, userFullName, userID') or []
     return _render(users=rows)
 
@@ -33,7 +28,7 @@ def list_users():
 @users_bp.route('/users/filter')
 def filter_users():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
     usertype = request.args.get('type', '')
     if usertype not in VALID_TYPES:
         return _render_with_error('Invalid user type filter.')
@@ -44,7 +39,7 @@ def filter_users():
 @users_bp.route('/users/add', methods=['POST'])
 def add_user():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
 
     user_id = request.form.get('user_id', '').strip()
     name = request.form.get('name', '').strip()
@@ -81,7 +76,7 @@ def add_user():
 @users_bp.route('/users/update', methods=['POST'])
 def update_user():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
 
     user_id = request.form.get('user_id', '').strip()
     dept = request.form.get('dept', '').strip() or None
@@ -104,7 +99,7 @@ def update_user():
 @users_bp.route('/users/delete/<int:user_id>', methods=['POST'])
 def delete_user(user_id):
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
     if user_id == session.get('user_id'):
         return _render_with_error('You cannot delete your own account.')
 
@@ -139,7 +134,7 @@ def delete_user(user_id):
 @users_bp.route('/users/assets-count')
 def users_assets_count():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
     rows = query('''
         SELECT u.userFullName, COUNT(aa.assignmentID) AS total
         FROM users u
@@ -153,7 +148,7 @@ def users_assets_count():
 @users_bp.route('/users/no-active-asset')
 def no_active_asset():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
     rows = query('''
         SELECT * FROM users
         WHERE userType = 'Employee'
@@ -168,7 +163,7 @@ def no_active_asset():
 @users_bp.route('/users/department-count')
 def department_count():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
     rows = query('''
         SELECT COALESCE(department, '(none)') AS department, COUNT(*) AS total
         FROM users
@@ -181,7 +176,7 @@ def department_count():
 @users_bp.route('/users/most-assignments')
 def most_assignments():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
     rows = query('''
         SELECT u.userID, u.userFullName, COUNT(*) AS total
         FROM asset_assignment aa
@@ -196,7 +191,7 @@ def most_assignments():
 @users_bp.route('/users/type-count')
 def type_count():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
     rows = query('''
         SELECT userType, COUNT(*) AS total
         FROM users

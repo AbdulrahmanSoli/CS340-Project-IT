@@ -4,7 +4,7 @@ Run once after deploying the password-hashing changes:
 
     python scripts/hash_existing_passwords.py
 
-Idempotent — rows that already start with a werkzeug hash prefix
+Idempotent - rows that already start with a werkzeug hash prefix
 ('pbkdf2:', 'scrypt:', 'argon2') are left alone.
 
 After this runs, the seeded users from the report log in with the literal

@@ -12,7 +12,10 @@
     <a href='/assets/my'>My Assets</a> |
     <a href='/assignments/employee/{{ session["user_id"] }}'>My Assignments</a> |
     {% endif %}
-    <a href='/logout'>Logout</a>
+    <form method='POST' action='/logout' style='display:inline'>
+      <input type='hidden' name='csrf_token' value='{{ csrf_token() }}'>
+      <button type='submit'>Logout</button>
+    </form>
   </nav>
   {% with messages = get_flashed_messages() %}
     {% if messages %}

@@ -1,17 +1,15 @@
 import psycopg2
 from flask import Blueprint, flash, render_template, request, redirect, session
 from db import query, tx
+from routes.guards import admin_redirect, admin_required, login_required
 
 assets_bp = Blueprint('assets', __name__)
 
-def login_required():
-    return 'user_id' not in session
-
-def admin_required():
-    return 'user_id' not in session or session.get('user_type') != 'Admin'
-
 def _render(assets=None, **extra):
-    return render_template('assets.html', assets=assets or [], **extra)
+    return render_template('assets.html',
+                           assets=assets or [],
+                           page_title=extra.pop('page_title', 'Assets'),
+                           **extra)
 
 def _render_with_error(msg):
     rows = query('SELECT * FROM asset ORDER BY status, assetName, assetID') or []
@@ -24,7 +22,7 @@ def _render_with_error(msg):
 @assets_bp.route('/assets')
 def list_assets():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
     rows = query('SELECT * FROM asset ORDER BY status, assetName, assetID') or []
     return _render(assets=rows)
 
@@ -32,7 +30,7 @@ def list_assets():
 @assets_bp.route('/assets/filter')
 def filter_assets():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
 
     status = request.args.get('status', '').strip()
     category = request.args.get('category', '').strip()
@@ -67,7 +65,7 @@ def filter_assets():
 @assets_bp.route('/assets/add', methods=['POST'])
 def add_asset():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
 
     asset_id = request.form.get('asset_id', '').strip()
     name = request.form.get('name', '').strip()
@@ -99,7 +97,7 @@ def add_asset():
 @assets_bp.route('/assets/update', methods=['POST'])
 def update_asset():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
 
     asset_id = request.form.get('asset_id', '').strip()
     new_status = request.form.get('status', '').strip()
@@ -140,7 +138,7 @@ def update_asset():
 @assets_bp.route('/assets/delete/<int:asset_id>', methods=['POST'])
 def delete_asset(asset_id):
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
 
     if not query('SELECT 1 FROM asset WHERE assetID = %s', (asset_id,)):
         return _render_with_error(f'Asset {asset_id} does not exist.')
@@ -169,7 +167,7 @@ def delete_asset(asset_id):
 @assets_bp.route('/assets/assignments')
 def current_assignments():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
     rows = query('''
         SELECT a.assetName, u.userFullName
         FROM asset a
@@ -184,7 +182,7 @@ def current_assignments():
 @assets_bp.route('/assets/unassigned')
 def unassigned_assets():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
     rows = query('''
         SELECT * FROM asset
         WHERE assetID NOT IN (SELECT assetID FROM asset_assignment)
@@ -196,7 +194,7 @@ def unassigned_assets():
 @assets_bp.route('/assets/count-by-category')
 def count_categories():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
     rows = query('''
         SELECT category, COUNT(*) AS total
         FROM asset
@@ -209,7 +207,7 @@ def count_categories():
 @assets_bp.route('/assets/frequent-assignments')
 def frequent_assets():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
     rows = query('''
         SELECT assetID, COUNT(*) AS total
         FROM asset_assignment
@@ -231,13 +229,13 @@ def my_assets():
         WHERE aa.userID = %s AND aa.returnDate IS NULL
         ORDER BY a.assetID
     ''', (session['user_id'],)) or []
-    return _render(assets=rows)
+    return _render(assets=rows, page_title='My Assets', employee_view=True)
 
 # 10. Assets purchased this year (requires purchaseDate column)
 @assets_bp.route('/assets/new-purchases')
 def recent_purchases():
     if admin_required():
-        return redirect('/login')
+        return admin_redirect()
     rows = query('''
         SELECT * FROM asset
         WHERE EXTRACT(YEAR FROM purchaseDate) = EXTRACT(YEAR FROM CURRENT_DATE)

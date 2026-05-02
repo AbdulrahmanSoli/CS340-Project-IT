@@ -20,8 +20,12 @@ def login():
         return render_template('login.html', error='Wrong email or password')
     return render_template('login.html')
 
-@auth_bp.route('/logout')
+@auth_bp.route('/logout', methods=['GET', 'POST'])
 def logout():
+    if request.method == 'GET':
+        if 'user_id' in session:
+            return redirect('/dashboard')
+        return redirect('/login')
     session.clear()
     return redirect('/login')
 
@@ -29,6 +33,27 @@ def logout():
 def dashboard():
     if 'user_id' not in session:
         return redirect('/login')
+
+    if session.get('user_type') == 'Employee':
+        total = query('''
+            SELECT COUNT(*)
+            FROM asset_assignment
+            WHERE userID = %s AND returnDate IS NULL
+        ''', (session['user_id'],))[0][0]
+
+        recent = query('''
+            SELECT a.assetName, aa.assignedDate
+            FROM asset_assignment aa
+            JOIN asset a ON aa.assetID = a.assetID
+            WHERE aa.userID = %s
+            ORDER BY aa.assignedDate DESC, aa.assignmentID DESC
+            LIMIT 5
+        ''', (session['user_id'],))
+
+        return render_template('dashboard.html',
+                               employee_dashboard=True,
+                               total=total,
+                               recent=recent)
 
     total = query('SELECT COUNT(*) AS total FROM asset')[0][0]
 

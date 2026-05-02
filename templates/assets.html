@@ -1,10 +1,11 @@
 {% extends 'base.html' %}
 {% block content %}
 
-<h2>Assets</h2>
+<h2>{{ page_title }}</h2>
 
 {% if error %}<p style='color:red'>{{ error }}</p>{% endif %}
 
+{% if not employee_view is defined %}
 <p>
   <a href='/assets'>All</a> |
   <a href='/assets/filter?status=Available'>Available</a> |
@@ -30,6 +31,7 @@
   <input name='serial' placeholder='Serial contains' value='{{ filters.serial if filters is defined else "" }}'>
   <button type='submit'>Search</button>
 </form>
+{% endif %}
 
 {% if assets %}
 <table border='1'>
