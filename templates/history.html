@@ -1,0 +1,90 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Asset Status History</h2>
+
+{% if error %}<p style='color:red'>{{ error }}</p>{% endif %}
+
+<p>
+  <a href='/history/filter?status=Available'>Available</a> |
+  <a href='/history/filter?status=Assigned'>Assigned</a> |
+  <a href='/history/filter?status=Damaged'>Damaged</a> |
+  <a href='/history'>Show All</a>
+</p>
+
+{% if history %}
+<table border='1'>
+  <tr>
+    <th>Asset ID</th><th>From</th><th>To</th><th>Date</th>
+  </tr>
+  {% for h in history %}
+  <tr>
+    <td>{{ h[4] }}</td>
+    <td>{{ h[1] }}</td>
+    <td>{{ h[2] }}</td>
+    <td>{{ h[3] }}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% else %}
+<p>No history found.</p>
+{% endif %}
+
+<h3>Log a Status Change</h3>
+<form method='POST' action='/history/add'>
+  <input type='hidden' name='csrf_token' value='{{ csrf_token() }}'>
+  <input name='history_id' placeholder='History ID' type='number' required>
+  <input name='asset_id' placeholder='Asset ID' type='number' required>
+  <select name='prev_status'>
+    <option value='Available'>Available</option>
+    <option value='Assigned'>Assigned</option>
+    <option value='Damaged'>Damaged</option>
+  </select>
+  <select name='new_status'>
+    <option value='Available'>Available</option>
+    <option value='Assigned'>Assigned</option>
+    <option value='Damaged'>Damaged</option>
+  </select>
+  <button type='submit'>Log Change</button>
+</form>
+{% endblock %}
+{% extends 'base.html' %}
+{% block content %}
+<h2>Asset Status History</h2>
+
+<a href='/history/filter?status=Available'>Available</a> |
+<a href='/history/filter?status=Assigned'>Assigned</a> |
+<a href='/history/filter?status=Damaged'>Damaged</a> |
+<a href='/history'>Show All</a>
+
+<table border='1'>
+  <tr>
+    <th>Asset ID</th><th>From</th><th>To</th><th>Date</th>
+  </tr>
+  {% for h in history %}
+  <tr>
+    <td>{{ h[4] }}</td>
+    <td>{{ h[1] }}</td>
+    <td>{{ h[2] }}</td>
+    <td>{{ h[3] }}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+<h3>Log a Status Change</h3>
+<form method='POST' action='/history/add'>
+  <input type='hidden' name='csrf_token' value='{{ csrf_token() }}'>
+  <input name='history_id' placeholder='History ID' type='number' required>
+  <input name='asset_id' placeholder='Asset ID' required>
+  <select name='prev_status'>
+    <option value='Available'>Available</option>
+    <option value='Assigned'>Assigned</option>
+    <option value='Damaged'>Damaged</option>
+  </select>
+  <select name='new_status'>
+    <option value='Available'>Available</option>
+    <option value='Assigned'>Assigned</option>
+    <option value='Damaged'>Damaged</option>
+  </select>
+  <button type='submit'>Log Change</button>
+</form>
+{% endblock %}
