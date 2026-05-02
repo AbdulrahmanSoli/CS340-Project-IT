@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Atlas — IT Asset Management{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #fafaf9;
+      --surface: #ffffff;
+      --surface-2: #f5f5f4;
+      --ink: #0a0a0a;
+      --ink-2: #27272a;
+      --muted: #71717a;
+      --muted-2: #a1a1aa;
+      --border: #e7e5e4;
+      --border-strong: #d6d3d1;
+      --accent: oklch(0.55 0.13 250);
+      --accent-fg: #ffffff;
+      --accent-soft: oklch(0.96 0.02 250);
+      --accent-border: oklch(0.88 0.05 250);
+      --green: oklch(0.62 0.14 150);
+      --green-soft: oklch(0.96 0.04 150);
+      --amber: oklch(0.72 0.14 75);
+      --amber-soft: oklch(0.96 0.05 75);
+      --red: oklch(0.58 0.18 25);
+      --red-soft: oklch(0.96 0.04 25);
+      --radius: 8px;
+      --radius-sm: 6px;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+      --shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--ink);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.01em; color: var(--ink); }
+    h1 { font-size: 22px; }
+    h2 { font-size: 18px; }
+    h3 { font-size: 15px; }
+    p { margin: 0; }
+
+    /* ---------- App shell ---------- */
+    .app {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      min-height: 100vh;
+    }
+    .sidebar {
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      padding: 20px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 4px 8px;
+    }
+    .brand-mark {
+      width: 28px; height: 28px;
+      border-radius: 7px;
+      background: var(--ink);
+      color: #fff;
+      display: grid; place-items: center;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: -0.02em;
+    }
+    .brand-name {
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      font-size: 15px;
+    }
+    .brand-sub {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .nav-group { display: flex; flex-direction: column; gap: 2px; }
+    .nav-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0 8px 6px;
+    }
+    .nav-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 7px 8px;
+      border-radius: var(--radius-sm);
+      color: var(--ink-2);
+      font-weight: 500;
+      font-size: 13.5px;
+      text-decoration: none;
+      transition: background 80ms ease;
+    }
+    .nav-link:hover { background: var(--surface-2); text-decoration: none; }
+    .nav-link.active {
+      background: var(--ink);
+      color: #fff;
+    }
+    .nav-link.active .nav-icon { color: #fff; }
+    .nav-icon {
+      width: 16px; height: 16px;
+      flex-shrink: 0;
+      color: var(--muted);
+    }
+
+    .sidebar-footer {
+      margin-top: auto;
+      border-top: 1px solid var(--border);
+      padding-top: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--accent-soft);
+      color: var(--accent);
+      display: grid; place-items: center;
+      font-weight: 600;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .user-info { flex: 1; min-width: 0; }
+    .user-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-role { font-size: 11px; color: var(--muted); }
+    .logout-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 5px 8px;
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      font-size: 12px;
+      transition: all 80ms ease;
+    }
+    .logout-btn:hover { color: var(--ink); border-color: var(--border-strong); background: var(--surface-2); }
+
+    /* ---------- Main ---------- */
+    .main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .page-header {
+      border-bottom: 1px solid var(--border);
+      padding: 22px 32px;
+      background: var(--surface);
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .page-header-left { display: flex; flex-direction: column; gap: 4px; }
+    .page-eyebrow { font-size: 12px; color: var(--muted); font-weight: 500; }
+    .page-title { font-size: 22px; font-weight: 600; letter-spacing: -0.015em; }
+    .page-actions { display: flex; gap: 8px; align-items: center; }
+
+    .content {
+      padding: 24px 32px 48px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      max-width: 1400px;
+      width: 100%;
+    }
+
+    /* ---------- Flash ---------- */
+    .flash {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      background: var(--green-soft);
+      border: 1px solid color-mix(in oklab, var(--green) 30%, transparent);
+      color: color-mix(in oklab, var(--green) 80%, var(--ink));
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .flash::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green);
+    }
+    .alert-error {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      background: var(--red-soft);
+      border: 1px solid color-mix(in oklab, var(--red) 25%, transparent);
+      color: color-mix(in oklab, var(--red) 80%, var(--ink));
+      font-size: 13px;
+      font-weight: 500;
+    }
+    .alert-error::before {
+      content: ""; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--red);
+    }
+
+    /* ---------- Card ---------- */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+    .card-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .card-title { font-size: 14px; font-weight: 600; }
+    .card-body { padding: 18px; }
+    .card-body-tight { padding: 0; }
+
+    /* ---------- Stat tiles ---------- */
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+    }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .stat-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .stat-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--ink);
+    }
+    .stat-dot.green { background: var(--green); }
+    .stat-dot.amber { background: var(--amber); }
+    .stat-dot.red { background: var(--red); }
+    .stat-dot.accent { background: var(--accent); }
+    .stat-value {
+      font-size: 26px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-sub {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    /* ---------- Buttons ---------- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      padding: 7px 12px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--ink);
+      cursor: pointer;
+      transition: all 80ms ease;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--surface-2); text-decoration: none; }
+    .btn-primary {
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+    }
+    .btn-primary:hover { background: var(--ink-2); }
+    .btn-accent {
+      background: var(--accent);
+      color: var(--accent-fg);
+      border-color: var(--accent);
+    }
+    .btn-accent:hover { filter: brightness(1.05); }
+    .btn-ghost {
+      background: transparent;
+      border-color: transparent;
+      color: var(--muted);
+    }
+    .btn-ghost:hover { background: var(--surface-2); color: var(--ink); }
+    .btn-danger {
+      color: var(--red);
+      border-color: color-mix(in oklab, var(--red) 30%, var(--border));
+    }
+    .btn-danger:hover { background: var(--red-soft); }
+    .btn-sm { padding: 4px 8px; font-size: 12px; }
+
+    /* ---------- Forms ---------- */
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      align-items: end;
+    }
+    .form-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ink-2);
+    }
+    .input, select.input, .form-row input, .form-row select, .form-grid input, .form-grid select, input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="date"], select {
+      font-family: inherit;
+      font-size: 13.5px;
+      padding: 7px 10px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--ink);
+      outline: none;
+      transition: border 80ms ease, box-shadow 80ms ease;
+      width: 100%;
+      min-width: 0;
+    }
+    .input:focus, input:focus, select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent);
+    }
+    input::placeholder { color: var(--muted-2); }
+
+    /* ---------- Tables ---------- */
+    .table-wrap { overflow-x: auto; }
+    table.data {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+    }
+    table.data th, table.data td {
+      text-align: left;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+    table.data thead th {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 600;
+      color: var(--muted);
+      background: var(--surface-2);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    table.data tbody tr:last-child td { border-bottom: none; }
+    table.data tbody tr:hover { background: var(--surface-2); }
+    table.data .mono, .mono { font-family: var(--font-mono); font-size: 12.5px; }
+    table.data .num { font-variant-numeric: tabular-nums; }
+    .id-chip {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--surface-2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    /* ---------- Pills / badges ---------- */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11.5px;
+      font-weight: 500;
+      padding: 3px 8px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      color: var(--ink-2);
+      white-space: nowrap;
+    }
+    .pill::before {
+      content: ""; width: 5px; height: 5px; border-radius: 50%;
+      background: var(--muted);
+    }
+    .pill-available { background: var(--green-soft); color: color-mix(in oklab, var(--green) 70%, var(--ink)); border-color: color-mix(in oklab, var(--green) 25%, transparent); }
+    .pill-available::before { background: var(--green); }
+    .pill-assigned { background: var(--accent-soft); color: color-mix(in oklab, var(--accent) 70%, var(--ink)); border-color: var(--accent-border); }
+    .pill-assigned::before { background: var(--accent); }
+    .pill-damaged { background: var(--red-soft); color: color-mix(in oklab, var(--red) 70%, var(--ink)); border-color: color-mix(in oklab, var(--red) 25%, transparent); }
+    .pill-damaged::before { background: var(--red); }
+    .pill-active { background: var(--accent-soft); color: color-mix(in oklab, var(--accent) 70%, var(--ink)); border-color: var(--accent-border); }
+    .pill-active::before { background: var(--accent); }
+    .pill-returned { background: var(--surface-2); color: var(--muted); }
+    .pill-returned::before { background: var(--muted-2); }
+    .pill-admin { background: #1c1917; color: #fafaf9; border-color: #1c1917; }
+    .pill-admin::before { background: #fbbf24; }
+    .pill-employee { background: var(--surface-2); color: var(--ink-2); }
+    .pill-employee::before { background: var(--muted); }
+
+    /* ---------- Tabs (segmented) ---------- */
+    .tabs {
+      display: inline-flex;
+      gap: 2px;
+      padding: 3px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      flex-wrap: wrap;
+    }
+    .tab {
+      padding: 5px 11px;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: var(--muted);
+      border-radius: 4px;
+      text-decoration: none;
+      transition: all 80ms ease;
+      white-space: nowrap;
+    }
+    .tab:hover { color: var(--ink); text-decoration: none; }
+    .tab.active {
+      background: var(--surface);
+      color: var(--ink);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ---------- Section split ---------- */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 1100px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 8px 0 -4px;
+    }
+    .section-title h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
+
+    .empty {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13.5px;
+    }
+    .empty-icon {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      background: var(--surface-2);
+      display: inline-grid; place-items: center;
+      margin-bottom: 10px;
+      color: var(--muted-2);
+    }
+
+    .inline-form { display: inline; }
+    .row-actions { display: inline-flex; gap: 6px; align-items: center; }
+
+    /* ---------- Login ---------- */
+    .login-screen {
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 40px 20px;
+      background:
+        radial-gradient(circle at 20% 0%, oklch(0.96 0.04 250) 0, transparent 50%),
+        radial-gradient(circle at 80% 100%, oklch(0.96 0.03 280) 0, transparent 50%),
+        var(--bg);
+    }
+    .login-card {
+      width: 100%;
+      max-width: 380px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      box-shadow: var(--shadow);
+    }
+    .login-brand {
+      display: flex; align-items: center; gap: 12px;
+      margin-bottom: 28px;
+    }
+    .login-brand .brand-mark { width: 36px; height: 36px; font-size: 17px; }
+    .login-brand-text .brand-name { font-size: 17px; }
+    .login-brand-text .brand-sub { font-size: 10px; }
+    .login-title { font-size: 20px; font-weight: 600; letter-spacing: -0.015em; margin-bottom: 4px; }
+    .login-sub { color: var(--muted); font-size: 13.5px; margin-bottom: 24px; }
+    .login-form { display: flex; flex-direction: column; gap: 14px; }
+    .login-form .btn { justify-content: center; padding: 10px 14px; font-size: 14px; }
+    .login-hint {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+    .login-hint code {
+      font-family: var(--font-mono);
+      font-size: 11.5px;
+      background: var(--surface-2);
+      padding: 1px 5px;
+      border-radius: 3px;
+      color: var(--ink-2);
+    }
+
+    @media (max-width: 820px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { position: relative; height: auto; flex-direction: row; flex-wrap: wrap; gap: 12px; padding: 12px 16px; }
+      .sidebar > .nav-group { flex-direction: row; flex-wrap: wrap; flex: 1; }
+      .nav-label { display: none; }
+      .sidebar-footer { margin-top: 0; border-top: none; padding-top: 0; }
+      .page-header, .content { padding-left: 16px; padding-right: 16px; }
+    }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+{% block layout %}
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">A</div>
+      <div>
+        <div class="brand-name">Atlas</div>
+        <div class="brand-sub">IT Assets</div>
+      </div>
+    </div>
+
+    <nav class="nav-group">
+      <div class="nav-label">General</div>
+      <a class="nav-link {% if active_nav == 'dashboard' %}active{% endif %}" href="/dashboard">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"></rect><rect x="14" y="3" width="7" height="5" rx="1"></rect><rect x="14" y="12" width="7" height="9" rx="1"></rect><rect x="3" y="16" width="7" height="5" rx="1"></rect></svg>
+        Dashboard
+      </a>
+
+      {% if session['user_type'] == 'Admin' %}
+      <a class="nav-link {% if active_nav == 'assets' %}active{% endif %}" href="/assets">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><path d="M3.27 6.96 12 12.01l8.73-5.05"></path><path d="M12 22.08V12"></path></svg>
+        Assets
+      </a>
+      <a class="nav-link {% if active_nav == 'assignments' %}active{% endif %}" href="/assignments">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        Assignments
+      </a>
+      <a class="nav-link {% if active_nav == 'history' %}active{% endif %}" href="/history">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l3 2"></path></svg>
+        History
+      </a>
+      <a class="nav-link {% if active_nav == 'users' %}active{% endif %}" href="/users">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        Users
+      </a>
+      {% elif session['user_type'] == 'Employee' %}
+      <a class="nav-link {% if active_nav == 'my-assets' %}active{% endif %}" href="/assets/my">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+        My Assets
+      </a>
+      <a class="nav-link {% if active_nav == 'my-assignments' %}active{% endif %}" href="/assignments/employee/{{ session['user_id'] }}">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        My Assignments
+      </a>
+      {% endif %}
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="avatar">{{ (session['user_name'] or 'U')[0]|upper }}</div>
+      <div class="user-info">
+        <div class="user-name">{{ session['user_name'] or 'Guest' }}</div>
+        <div class="user-role">{{ session['user_type'] or '' }}</div>
+      </div>
+      <form method="POST" action="/logout" class="inline-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="logout-btn" title="Sign out">Sign out</button>
+      </form>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="page-header">
+      <div class="page-header-left">
+        {% block eyebrow %}<div class="page-eyebrow">{{ page_eyebrow or '' }}</div>{% endblock %}
+        <h1 class="page-title">{% block page_title %}{{ page_title or 'Dashboard' }}{% endblock %}</h1>
+      </div>
+      <div class="page-actions">{% block page_actions %}{% endblock %}</div>
+    </header>
+
+    <div class="content">
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          {% for message in messages %}
+            <div class="flash">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+</div>
+{% endblock %}
+
+</body>
+</html>

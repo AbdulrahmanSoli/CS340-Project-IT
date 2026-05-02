@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% set active_nav = 'assets' if not employee_view is defined else 'my-assets' %}
+{% set page_eyebrow = 'Inventory' %}
+{% set page_title = page_title %}
+
+{% block content %}
+
+{% if error %}<div class="alert-error">{{ error }}</div>{% endif %}
+
+{% if not employee_view is defined %}
+
+<div class="card">
+  <div class="card-header" style="flex-direction:column;align-items:flex-start;gap:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;width:100%;flex-wrap:wrap;gap:10px">
+      <div class="card-title">Browse assets</div>
+      <div class="tabs">
+        <a class="tab {% if filters is not defined and current_holders is not defined and category_counts is not defined and frequent is not defined %}active{% endif %}" href="/assets">All</a>
+        <a class="tab {% if filters is defined and filters.status == 'Available' %}active{% endif %}" href="/assets/filter?status=Available">Available</a>
+        <a class="tab {% if filters is defined and filters.status == 'Assigned' %}active{% endif %}" href="/assets/filter?status=Assigned">Assigned</a>
+        <a class="tab {% if filters is defined and filters.status == 'Damaged' %}active{% endif %}" href="/assets/filter?status=Damaged">Damaged</a>
+        <a class="tab" href="/assets/unassigned">Never assigned</a>
+        <a class="tab" href="/assets/new-purchases">New this year</a>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <a class="tab {% if current_holders is defined %}active{% endif %}" href="/assets/assignments">Current holders</a>
+      <a class="tab {% if category_counts is defined %}active{% endif %}" href="/assets/count-by-category">By category</a>
+      <a class="tab {% if frequent is defined %}active{% endif %}" href="/assets/frequent-assignments">Frequently assigned</a>
+    </div>
+
+    <form method="GET" action="/assets/filter" class="form-row" style="width:100%">
+      <select name="status" style="max-width:160px">
+        <option value="">Any status</option>
+        <option value="Available" {% if filters is defined and filters.status == 'Available' %}selected{% endif %}>Available</option>
+        <option value="Assigned" {% if filters is defined and filters.status == 'Assigned' %}selected{% endif %}>Assigned</option>
+        <option value="Damaged" {% if filters is defined and filters.status == 'Damaged' %}selected{% endif %}>Damaged</option>
+      </select>
+      <input name="category" placeholder="Category contains…" value="{{ filters.category if filters is defined else '' }}" style="max-width:220px">
+      <input name="serial" placeholder="Serial contains…" value="{{ filters.serial if filters is defined else '' }}" style="max-width:220px">
+      <button type="submit" class="btn btn-primary">Search</button>
+    </form>
+  </div>
+</div>
+
+{% endif %}
+
+{% if assets %}
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">{{ assets|length }} asset{{ '' if assets|length == 1 else 's' }}</div>
+  </div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th>ID</th><th>Name</th><th>Category</th>
+            <th>Status</th><th>Serial</th>
+            {% if session['user_type'] == 'Admin' %}<th style="width:1%">Actions</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in assets %}
+          <tr>
+            <td><span class="id-chip">#{{ a[0] }}</span></td>
+            <td style="font-weight:500">{{ a[1] }}</td>
+            <td>{{ a[2] }}</td>
+            <td>
+              {% if a[3] == 'Available' %}<span class="pill pill-available">Available</span>
+              {% elif a[3] == 'Assigned' %}<span class="pill pill-assigned">Assigned</span>
+              {% elif a[3] == 'Damaged' %}<span class="pill pill-damaged">Damaged</span>
+              {% else %}<span class="pill">{{ a[3] }}</span>{% endif %}
+            </td>
+            <td class="mono">{{ a[4] }}</td>
+            {% if session['user_type'] == 'Admin' %}
+            <td>
+              <div class="row-actions">
+                {% if a[3] == 'Available' %}
+                <form method="POST" action="/assets/update" class="inline-form">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="asset_id" value="{{ a[0] }}">
+                  <input type="hidden" name="status" value="Damaged">
+                  <button type="submit" class="btn btn-sm">Mark damaged</button>
+                </form>
+                {% elif a[3] == 'Damaged' %}
+                <form method="POST" action="/assets/update" class="inline-form">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input type="hidden" name="asset_id" value="{{ a[0] }}">
+                  <input type="hidden" name="status" value="Available">
+                  <button type="submit" class="btn btn-sm">Mark available</button>
+                </form>
+                {% endif %}
+                {% if a[3] != 'Assigned' %}
+                <form method="POST" action="/assets/delete/{{ a[0] }}" class="inline-form" onsubmit="return confirm('Delete asset {{ a[0] }}?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+                {% else %}
+                <span style="color:var(--muted);font-size:12px">In use</span>
+                {% endif %}
+              </div>
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% elif current_holders is not defined and category_counts is not defined and frequent is not defined %}
+<div class="card"><div class="empty">No assets found.</div></div>
+{% endif %}
+
+{% if current_holders is defined %}
+<div class="card">
+  <div class="card-header"><div class="card-title">Current holders</div></div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Asset</th><th>Held by</th></tr></thead>
+        <tbody>
+          {% for r in current_holders %}<tr><td>{{ r[0] }}</td><td>{{ r[1] }}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if category_counts is defined %}
+<div class="card">
+  <div class="card-header"><div class="card-title">Assets by category</div></div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Category</th><th class="num">Total</th></tr></thead>
+        <tbody>
+          {% for r in category_counts %}<tr><td>{{ r[0] }}</td><td class="num mono">{{ r[1] }}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if frequent is defined %}
+<div class="card">
+  <div class="card-header"><div class="card-title">Assets assigned more than once</div></div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Asset ID</th><th class="num">Times assigned</th></tr></thead>
+        <tbody>
+          {% for r in frequent %}<tr><td><span class="id-chip">#{{ r[0] }}</span></td><td class="num mono">{{ r[1] }}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if session['user_type'] == 'Admin' %}
+<div class="card">
+  <div class="card-header"><div class="card-title">Add new asset</div></div>
+  <div class="card-body">
+    <form method="POST" action="/assets/add" class="form-grid">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field"><label class="field-label">Asset ID</label><input name="asset_id" type="number" placeholder="e.g. 101" required></div>
+      <div class="field"><label class="field-label">Asset name</label><input name="name" placeholder="MacBook Pro 14" required></div>
+      <div class="field"><label class="field-label">Category</label><input name="category" placeholder="Laptop" required></div>
+      <div class="field"><label class="field-label">Serial number</label><input name="serial" type="text" placeholder="SN-…" required></div>
+      <div class="field"><label class="field-label">Status</label>
+        <select name="status">
+          <option value="Available">Available</option>
+          <option value="Damaged">Damaged</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">Add asset</button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

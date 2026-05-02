@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% block title %}Sign in — Atlas{% endblock %}
+
+{% block layout %}
+<div class="login-screen">
+  <div class="login-card">
+    <div class="login-brand">
+      <div class="brand-mark">A</div>
+      <div class="login-brand-text">
+        <div class="brand-name">Atlas</div>
+        <div class="brand-sub">IT Asset Management</div>
+      </div>
+    </div>
+
+    <div class="login-title">Sign in to your account</div>
+    <div class="login-sub">Enter your credentials to access the asset management system.</div>
+
+    <form method="POST" action="/login" class="login-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="field">
+        <label class="field-label" for="email">Email</label>
+        <input id="email" name="email" type="email" placeholder="you@atlas.com" required autofocus>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="password">Password</label>
+        <input id="password" name="password" type="password" placeholder="••••••••" required>
+      </div>
+
+      {% if error %}<div class="alert-error">{{ error }}</div>{% endif %}
+
+      <button type="submit" class="btn btn-primary">Sign in</button>
+    </form>
+
+    <div class="login-hint">
+      Demo accounts: <code>abdulrahman@atlas.com</code> / <code>hash_1</code> (Admin) ·
+      <code>mohammed@atlas.com</code> / <code>hash_3</code> (Employee).
+    </div>
+  </div>
+</div>
+{% endblock %}

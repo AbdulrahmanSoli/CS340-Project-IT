@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+{% set active_nav = 'assignments' if session['user_type'] == 'Admin' else 'my-assignments' %}
+{% set page_eyebrow = 'Workflow' %}
+{% set page_title = 'My assignments' if session['user_type'] == 'Employee' else 'Asset assignments' %}
+
+{% block content %}
+
+{% if error %}<div class="alert-error">{{ error }}</div>{% endif %}
+
+{% if session['user_type'] == 'Admin' %}
+<div class="tabs">
+  <a class="tab active" href="/assignments">Active</a>
+  <a class="tab" href="/assignments/returned">Returned</a>
+</div>
+{% endif %}
+
+{% if assignments %}
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">{{ assignments|length }} assignment{{ '' if assignments|length == 1 else 's' }}</div>
+  </div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr>
+            <th>ID</th><th>Asset</th><th>Employee</th>
+            <th>Assigned</th><th>Returned</th>
+            {% if session['user_type'] == 'Admin' %}<th style="width:1%">Action</th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% for a in assignments %}
+          <tr>
+            <td><span class="id-chip">#{{ a[0] }}</span></td>
+            <td>
+              {% if a|length > 6 %}<span style="font-weight:500">{{ a[6] }}</span> <span class="id-chip">#{{ a[3] }}</span>
+              {% else %}<span class="id-chip">#{{ a[3] }}</span>{% endif %}
+            </td>
+            <td>
+              {% if a|length > 7 %}<span style="font-weight:500">{{ a[7] }}</span> <span class="id-chip">#{{ a[4] }}</span>
+              {% else %}<span class="id-chip">#{{ a[4] }}</span>{% endif %}
+            </td>
+            <td class="mono">{{ a[1] }}</td>
+            <td>
+              {% if a[2] %}<span class="pill pill-returned">{{ a[2] }}</span>
+              {% else %}<span class="pill pill-active">Active</span>{% endif %}
+            </td>
+            {% if session['user_type'] == 'Admin' %}
+            <td>
+              {% if a[2] is none %}
+              <form method="POST" action="/assignments/return/{{ a[0] }}" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-sm">Mark returned</button>
+              </form>
+              {% endif %}
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% elif avg_days is not defined and top_users is not defined and repeated is not defined %}
+<div class="card"><div class="empty">No assignments found.</div></div>
+{% endif %}
+
+{% if avg_days is defined %}
+<div class="stat-grid">
+  <div class="stat">
+    <div class="stat-label"><span class="stat-dot accent"></span>Average days kept</div>
+    <div class="stat-value">{{ avg_days }}</div>
+    <div class="stat-sub">Across all returned assets</div>
+  </div>
+</div>
+{% endif %}
+
+{% if top_users is defined %}
+<div class="card">
+  <div class="card-header"><div class="card-title">Top users by assignments</div></div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>User ID</th><th class="num">Total</th></tr></thead>
+        <tbody>
+          {% for r in top_users %}<tr><td><span class="id-chip">#{{ r[0] }}</span></td><td class="num mono">{{ r[1] }}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if repeated is defined %}
+<div class="card">
+  <div class="card-header"><div class="card-title">Assets assigned more than once</div></div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Asset ID</th><th class="num">Times assigned</th></tr></thead>
+        <tbody>
+          {% for r in repeated %}<tr><td><span class="id-chip">#{{ r[0] }}</span></td><td class="num mono">{{ r[1] }}</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if session['user_type'] == 'Admin' %}
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header"><div class="card-title">Assign an asset</div></div>
+    <div class="card-body">
+      <form method="POST" action="/assignments/add" class="form-grid">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field">
+          <label class="field-label">Asset</label>
+          <select name="asset_id" required>
+            <option value="">— Select asset —</option>
+            {% for a in available_assets %}
+            <option value="{{ a[0] }}">#{{ a[0] }} · {{ a[1] }} ({{ a[2] }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="field">
+          <label class="field-label">Employee</label>
+          <select name="user_id" required>
+            <option value="">— Select employee —</option>
+            {% for e in employees %}
+            <option value="{{ e[0] }}">#{{ e[0] }} · {{ e[1] }} ({{ e[2] }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Assign</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">Pools</div></div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:6px">
+      <details>
+        <summary style="cursor:pointer;font-weight:500;font-size:13px">Available assets ({{ available_assets|length }})</summary>
+        <div class="table-wrap" style="margin-top:8px">
+          <table class="data">
+            <thead><tr><th>ID</th><th>Name</th><th>Category</th></tr></thead>
+            <tbody>
+              {% for a in available_assets %}
+              <tr><td><span class="id-chip">#{{ a[0] }}</span></td><td>{{ a[1] }}</td><td>{{ a[2] }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </details>
+      <details>
+        <summary style="cursor:pointer;font-weight:500;font-size:13px">Employees ({{ employees|length }})</summary>
+        <div class="table-wrap" style="margin-top:8px">
+          <table class="data">
+            <thead><tr><th>ID</th><th>Name</th><th>Department</th></tr></thead>
+            <tbody>
+              {% for e in employees %}
+              <tr><td><span class="id-chip">#{{ e[0] }}</span></td><td>{{ e[1] }}</td><td>{{ e[2] }}</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

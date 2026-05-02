@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% set active_nav = 'users' %}
+{% set page_eyebrow = 'People' %}
+{% set page_title = 'Users' %}
+
+{% block content %}
+
+{% if error %}<div class="alert-error">{{ error }}</div>{% endif %}
+
+<div class="card">
+  <div class="card-header" style="flex-direction:column;align-items:flex-start;gap:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;width:100%;flex-wrap:wrap;gap:10px">
+      <div class="card-title">Browse users</div>
+      <div class="tabs">
+        <a class="tab" href="/users">All</a>
+        <a class="tab" href="/users/filter?type=Admin">Admins</a>
+        <a class="tab" href="/users/filter?type=Employee">Employees</a>
+        <a class="tab" href="/users/no-active-asset">No active asset</a>
+      </div>
+    </div>
+    <div class="tabs">
+      <a class="tab {% if asset_counts is defined %}active{% endif %}" href="/users/assets-count">Assets per user</a>
+      <a class="tab {% if dept_counts is defined %}active{% endif %}" href="/users/department-count">By department</a>
+      <a class="tab {% if top_user is defined %}active{% endif %}" href="/users/most-assignments">Top user</a>
+      <a class="tab {% if type_counts is defined %}active{% endif %}" href="/users/type-count">By role</a>
+    </div>
+  </div>
+</div>
+
+{% if users %}
+<div class="card">
+  <div class="card-header"><div class="card-title">{{ users|length }} user{{ '' if users|length == 1 else 's' }}</div></div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr><th>ID</th><th>Name</th><th>Email</th><th>Department</th><th>Created</th><th>Role</th><th style="width:1%">Actions</th></tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr>
+            <td><span class="id-chip">#{{ u[0] }}</span></td>
+            <td style="display:flex;align-items:center;gap:10px">
+              <span class="avatar" style="width:26px;height:26px;font-size:11px">{{ (u[1] or 'U')[0]|upper }}</span>
+              <span style="font-weight:500">{{ u[1] }}</span>
+            </td>
+            <td class="mono">{{ u[2] }}</td>
+            <td>{{ u[3] or '—' }}</td>
+            <td class="mono">{{ u[5] }}</td>
+            <td>
+              {% if u[6] == 'Admin' %}<span class="pill pill-admin">Admin</span>
+              {% else %}<span class="pill pill-employee">Employee</span>{% endif %}
+            </td>
+            <td>
+              <div class="row-actions">
+                {% if u[6] == 'Employee' %}
+                <a class="btn btn-sm" href="/assignments/employee/{{ u[0] }}">Assignments</a>
+                {% endif %}
+                {% if session['user_type'] == 'Admin' and u[0] != session['user_id'] %}
+                <form method="POST" action="/users/delete/{{ u[0] }}" class="inline-form" onsubmit="return confirm('Delete user {{ u[0] }}?');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% elif asset_counts is not defined and dept_counts is not defined and top_user is not defined and type_counts is not defined %}
+<div class="card"><div class="empty">No users found.</div></div>
+{% endif %}
+
+{% if asset_counts is defined %}
+<div class="card">
+  <div class="card-header"><div class="card-title">Assets per user</div></div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Name</th><th class="num">Total assignments</th></tr></thead>
+        <tbody>{% for r in asset_counts %}<tr><td>{{ r[0] }}</td><td class="num mono">{{ r[1] }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if dept_counts is defined %}
+<div class="card">
+  <div class="card-header"><div class="card-title">Users by department</div></div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Department</th><th class="num">Total</th></tr></thead>
+        <tbody>{% for r in dept_counts %}<tr><td>{{ r[0] }}</td><td class="num mono">{{ r[1] }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if top_user is defined %}
+<div class="card">
+  <div class="card-header"><div class="card-title">User with most assignments</div></div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>User ID</th><th>Name</th><th class="num">Total</th></tr></thead>
+        <tbody>{% for r in top_user %}<tr><td><span class="id-chip">#{{ r[0] }}</span></td><td>{{ r[1] }}</td><td class="num mono">{{ r[2] }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if type_counts is defined %}
+<div class="card">
+  <div class="card-header"><div class="card-title">Users by role</div></div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Role</th><th class="num">Total</th></tr></thead>
+        <tbody>
+          {% for r in type_counts %}
+          <tr>
+            <td>
+              {% if r[0] == 'Admin' %}<span class="pill pill-admin">Admin</span>
+              {% else %}<span class="pill pill-employee">{{ r[0] }}</span>{% endif %}
+            </td>
+            <td class="num mono">{{ r[1] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% if session['user_type'] == 'Admin' %}
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header"><div class="card-title">Add new user</div></div>
+    <div class="card-body">
+      <form method="POST" action="/users/add" class="form-grid">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field"><label class="field-label">User ID</label><input name="user_id" type="number" required></div>
+        <div class="field"><label class="field-label">Full name</label><input name="name" required></div>
+        <div class="field"><label class="field-label">Email</label><input name="email" type="email" required></div>
+        <div class="field"><label class="field-label">Department</label><input name="dept" placeholder="Engineering"></div>
+        <div class="field"><label class="field-label">Password</label><input name="password" type="password" required></div>
+        <div class="field"><label class="field-label">Role</label>
+          <select name="type">
+            <option value="Employee">Employee</option>
+            <option value="Admin">Admin</option>
+          </select>
+        </div>
+        <button type="submit" class="btn btn-primary">Add user</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><div class="card-title">Update department</div></div>
+    <div class="card-body">
+      <form method="POST" action="/users/update" class="form-grid">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field">
+          <label class="field-label">User</label>
+          {% if users %}
+          <select name="user_id" required>
+            <option value="">— Select user —</option>
+            {% for u in users %}
+            <option value="{{ u[0] }}">#{{ u[0] }} · {{ u[1] }} ({{ u[3] or 'No dept' }})</option>
+            {% endfor %}
+          </select>
+          {% else %}
+          <input name="user_id" type="number" required>
+          {% endif %}
+        </div>
+        <div class="field"><label class="field-label">New department</label><input name="dept" placeholder="Marketing"></div>
+        <button type="submit" class="btn btn-primary">Update</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

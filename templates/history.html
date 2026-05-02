@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+{% set active_nav = 'history' %}
+{% set page_eyebrow = 'Audit log' %}
+{% set page_title = 'Asset status history' %}
+
+{% block content %}
+
+{% if error %}<div class="alert-error">{{ error }}</div>{% endif%}
+
+<div class="card">
+  <div class="card-header" style="flex-direction:column;align-items:flex-start;gap:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;width:100%;flex-wrap:wrap;gap:10px">
+      <div class="card-title">Filter history</div>
+      <div class="tabs">
+        <a class="tab" href="/history">All</a>
+        <a class="tab" href="/history/filter?status=Available">Available</a>
+        <a class="tab" href="/history/filter?status=Assigned">Assigned</a>
+        <a class="tab" href="/history/filter?status=Damaged">Damaged</a>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <a class="tab {% if named_history is defined %}active{% endif %}" href="/history/with-assets">With asset names</a>
+      <a class="tab {% if asset_counts is defined %}active{% endif %}" href="/history/count-by-asset">Changes per asset</a>
+      <a class="tab {% if damaged_assets is defined %}active{% endif %}" href="/history/damaged">Ever damaged</a>
+      <a class="tab {% if latest_statuses is defined %}active{% endif %}" href="/history/latest">Latest statuses</a>
+      <a class="tab {% if frequent_assets is defined %}active{% endif %}" href="/history/frequent">Frequent changes</a>
+    </div>
+
+    <div style="display:flex;gap:14px;width:100%;flex-wrap:wrap">
+      <form method="POST" action="/history/dates" class="form-row" style="flex:1;min-width:280px">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="field" style="flex:1"><label class="field-label">From</label>
+          <input name="from_date" type="date" value="{{ from_date if from_date is defined else '' }}" required>
+        </div>
+        <div class="field" style="flex:1"><label class="field-label">To</label>
+          <input name="to_date" type="date" value="{{ to_date if to_date is defined else '' }}" required>
+        </div>
+        <button type="submit" class="btn btn-primary" style="align-self:flex-end">Filter dates</button>
+      </form>
+
+      <form method="GET" action="/history/asset" class="form-row" style="flex:1;min-width:240px">
+        <div class="field" style="flex:1"><label class="field-label">Asset ID</label>
+          <input name="asset_id" placeholder="e.g. 42" type="number" required>
+        </div>
+        <button type="submit" class="btn" style="align-self:flex-end">Find history</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% if history %}
+<div class="card">
+  <div class="card-header"><div class="card-title">{{ history|length }} change{{ '' if history|length == 1 else 's' }}</div></div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Asset ID</th><th>From</th><th>To</th><th>Date</th></tr></thead>
+        <tbody>
+          {% for h in history %}
+          <tr>
+            <td><span class="id-chip">#{{ h[4] }}</span></td>
+            <td>
+              {% if h[1] == 'Available' %}<span class="pill pill-available">Available</span>
+              {% elif h[1] == 'Assigned' %}<span class="pill pill-assigned">Assigned</span>
+              {% elif h[1] == 'Damaged' %}<span class="pill pill-damaged">Damaged</span>
+              {% else %}<span class="pill">{{ h[1] }}</span>{% endif %}
+            </td>
+            <td>
+              {% if h[2] == 'Available' %}<span class="pill pill-available">Available</span>
+              {% elif h[2] == 'Assigned' %}<span class="pill pill-assigned">Assigned</span>
+              {% elif h[2] == 'Damaged' %}<span class="pill pill-damaged">Damaged</span>
+              {% else %}<span class="pill">{{ h[2] }}</span>{% endif %}
+            </td>
+            <td class="mono">{{ h[3] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% elif named_history is defined %}
+<div class="card">
+  <div class="card-header"><div class="card-title">History with asset names</div></div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Asset</th><th>From</th><th>To</th><th>Date</th></tr></thead>
+        <tbody>
+          {% for h in named_history %}
+          <tr><td>{{ h[0] }}</td><td>{{ h[1] }}</td><td>{{ h[2] }}</td><td class="mono">{{ h[3] }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% elif asset_counts is defined %}
+<div class="card">
+  <div class="card-header"><div class="card-title">Status changes per asset</div></div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Asset ID</th><th class="num">Total</th></tr></thead>
+        <tbody>{% for r in asset_counts %}<tr><td><span class="id-chip">#{{ r[0] }}</span></td><td class="num mono">{{ r[1] }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% elif damaged_assets is defined %}
+<div class="card">
+  <div class="card-header"><div class="card-title">Assets ever damaged</div></div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Asset ID</th></tr></thead>
+        <tbody>{% for r in damaged_assets %}<tr><td><span class="id-chip">#{{ r[0] }}</span></td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% elif latest_statuses is defined %}
+<div class="card">
+  <div class="card-header"><div class="card-title">Latest statuses</div></div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Asset ID</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>
+          {% for r in latest_statuses %}
+          <tr>
+            <td><span class="id-chip">#{{ r[0] }}</span></td>
+            <td>
+              {% if r[1] == 'Available' %}<span class="pill pill-available">Available</span>
+              {% elif r[1] == 'Assigned' %}<span class="pill pill-assigned">Assigned</span>
+              {% elif r[1] == 'Damaged' %}<span class="pill pill-damaged">Damaged</span>
+              {% else %}<span class="pill">{{ r[1] }}</span>{% endif %}
+            </td>
+            <td class="mono">{{ r[2] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% elif frequent_assets is defined %}
+<div class="card">
+  <div class="card-header"><div class="card-title">Assets with 3+ status changes</div></div>
+  <div class="card-body-tight">
+    <div class="table-wrap">
+      <table class="data">
+        <thead><tr><th>Asset ID</th><th class="num">Total</th></tr></thead>
+        <tbody>{% for r in frequent_assets %}<tr><td><span class="id-chip">#{{ r[0] }}</span></td><td class="num mono">{{ r[1] }}</td></tr>{% endfor %}</tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% else %}
+<div class="card"><div class="empty">No history found.</div></div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header"><div class="card-title">Log a status change</div></div>
+  <div class="card-body">
+    <form method="POST" action="/history/add" class="form-grid">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="field"><label class="field-label">History ID</label><input name="history_id" type="number" required></div>
+      <div class="field"><label class="field-label">Asset ID</label><input name="asset_id" type="number" required></div>
+      <div class="field"><label class="field-label">Previous status</label>
+        <select name="prev_status">
+          <option value="Available">Available</option>
+          <option value="Assigned">Assigned</option>
+          <option value="Damaged">Damaged</option>
+        </select>
+      </div>
+      <div class="field"><label class="field-label">New status</label>
+        <select name="new_status">
+          <option value="Available">Available</option>
+          <option value="Assigned">Assigned</option>
+          <option value="Damaged">Damaged</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">Log change</button>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

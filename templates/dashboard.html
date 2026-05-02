@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% set active_nav = 'dashboard' %}
+{% set page_eyebrow = 'Overview' %}
+{% set page_title = 'Welcome back, ' ~ session['user_name'] %}
+
+{% block content %}
+
+{% if employee_dashboard is defined %}
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="stat-label"><span class="stat-dot accent"></span>Currently assigned to me</div>
+    <div class="stat-value">{{ total }}</div>
+    <div class="stat-sub">Active assets in your possession</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">My recent assignments</div>
+    <a href="/assignments/employee/{{ session['user_id'] }}" class="btn btn-sm">View all</a>
+  </div>
+  <div class="card-body-tight">
+    {% if recent %}
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr><th>Asset</th><th>Date assigned</th></tr>
+        </thead>
+        <tbody>
+          {% for r in recent %}
+          <tr>
+            <td>{{ r[0] }}</td>
+            <td class="mono">{{ r[1] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">You have no recent assignments.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% else %}
+
+<div class="stat-grid">
+  <div class="stat">
+    <div class="stat-label"><span class="stat-dot"></span>Total assets</div>
+    <div class="stat-value">{{ total }}</div>
+    <div class="stat-sub">Across all categories</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label"><span class="stat-dot green"></span>Available</div>
+    <div class="stat-value">{{ available }}</div>
+    <div class="stat-sub">Ready to assign</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label"><span class="stat-dot accent"></span>Assigned</div>
+    <div class="stat-value">{{ assigned }}</div>
+    <div class="stat-sub">Currently in use</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label"><span class="stat-dot red"></span>Damaged</div>
+    <div class="stat-value">{{ damaged }}</div>
+    <div class="stat-sub">Out of service</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">Recent assignments</div>
+    <a href="/assignments" class="btn btn-sm">View all</a>
+  </div>
+  <div class="card-body-tight">
+    {% if recent %}
+    <div class="table-wrap">
+      <table class="data">
+        <thead>
+          <tr><th>Asset</th><th>Employee</th><th>Date</th></tr>
+        </thead>
+        <tbody>
+          {% for r in recent %}
+          <tr>
+            <td>{{ r[0] }}</td>
+            <td>{{ r[1] }}</td>
+            <td class="mono">{{ r[2] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty">No recent assignments yet.</div>
+    {% endif %}
+  </div>
+</div>
+
+{% endif %}
+
+{% endblock %}
