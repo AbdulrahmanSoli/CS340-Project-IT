@@ -4,6 +4,14 @@ A Flask and PostgreSQL web app for tracking IT assets, assigning them to employe
 
 Team Atlas Data: Abdulrahman Solimanie, Abdullah Alrasheed, Mohammed Almuaigel, Abdullah Albekairi, Fares Hassan.
 
+## Contributors
+
+- [@AbdulrahmanSoli](https://github.com/AbdulrahmanSoli) — Abdulrahman Solimanie (Lead): Flask app setup, blueprint registration, `.env` loading, database helpers, CSRF protection, login/session handling, dashboard integration, tests, and Render deployment.
+- [@AbdullahSultan-619](https://github.com/AbdullahSultan-619) — Abdullah Alrasheed: User management page (CRUD, role inserts into `admin`/`employee`, and user analytics).
+- [@asus3020](https://github.com/asus3020) — Mohammed Almuaigel: Assignment workflow (assign/return with transactional status-history writes) and assignment analytics.
+- [@AAlbekairi](https://github.com/AAlbekairi) — Abdullah Albekairi: Asset status history page (filters, manual log form, and history analytics).
+- Fares Hassan — Asset management page (CRUD, multi-filter search by status/category/serial, and asset analytics).
+
 ## Live Demo
 
 <https://cs340-project-it.onrender.com>
